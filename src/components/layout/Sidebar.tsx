@@ -72,13 +72,8 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 flex flex-col">
-      <div className="px-6 py-5 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <Scissors className="h-7 w-7 text-primary-600" />
-          <span className="text-xl font-bold text-gray-900">
-            Uniformes<span className="text-primary-600">Pro</span>
-          </span>
-        </div>
+      <div className="px-4 py-5 border-b border-gray-100">
+        <img src="/images/logo.jpg" alt="Uniformes D'Johanna" className="w-full h-auto object-contain" />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Scissors, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 import { Button } from '../components/ui/Button'
@@ -42,13 +42,10 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-950 via-primary-900 to-primary-800 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 mb-4">
-            <Scissors className="h-8 w-8 text-white" />
+          <div className="mb-4">
+            <img src="/images/logo.jpg" alt="Uniformes D'Johanna" className="h-28 w-auto object-contain mx-auto drop-shadow-lg" />
           </div>
-          <h1 className="text-2xl font-bold text-white">
-            Uniformes<span className="text-blue-300">Pro</span>
-          </h1>
-          <p className="text-primary-300 text-sm mt-1">
+          <p className="text-primary-200 text-sm mt-1">
             Sistema de gestion interno
           </p>
         </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Trash2, UserPlus, AlertTriangle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, UserPlus, AlertTriangle, CheckCircle, FileDown } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
@@ -15,8 +15,9 @@ import { PasswordConfirmModal } from '../../components/ui/PasswordConfirmModal'
 export function OrderDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { get, post, put, patch, del } = useApi()
+  const { get, post, put, patch, del, download } = useApi()
   const queryClient = useQueryClient()
+  const [downloading, setDownloading] = useState(false)
   const [itemModal, setItemModal] = useState(false)
   const [employeeModal, setEmployeeModal] = useState(false)
   const [itemForm, setItemForm] = useState({ uniform_type: '', quantity: '', price_per_unit: '' })
@@ -81,6 +82,25 @@ export function OrderDetailPage() {
       setEmpForm({ name: '', department: '', position: '' })
     },
   })
+
+  const handleDownloadQuotation = async () => {
+    setDownloading(true)
+    try {
+      const blob = await download(`/api/orders/${id}/quotation`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Cotizacion-${id?.slice(0, 8).toUpperCase()}.docx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err?.message || 'Error al generar la cotización')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   if (isLoading) return <div className="text-gray-400">Cargando...</div>
   if (!order) return <div className="text-gray-400">Pedido no encontrado</div>
@@ -229,6 +249,17 @@ export function OrderDetailPage() {
                 <p className="font-medium text-gray-900">
                   {new Date(order.created_at).toLocaleDateString()}
                 </p>
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={handleDownloadQuotation}
+                  disabled={downloading}
+                >
+                  <FileDown className="h-4 w-4" />
+                  {downloading ? 'Generando...' : 'Descargar cotización'}
+                </Button>
               </div>
             </div>
           </Card>

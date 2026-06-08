@@ -1,6 +1,8 @@
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export function useApi() {
   const token = useAuthStore((s) => s.token)
 
@@ -19,5 +21,16 @@ export function useApi() {
 
     del: <T = unknown>(path: string) =>
       api<T>(path, { method: 'DELETE', token: token || undefined }),
+
+    download: async (path: string): Promise<Blob> => {
+      const res = await fetch(`${API_URL}${path}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as any).error || 'Error al descargar el archivo')
+      }
+      return res.blob()
+    },
   }
 }

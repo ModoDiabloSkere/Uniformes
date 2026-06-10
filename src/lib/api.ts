@@ -29,7 +29,9 @@ export async function api<T = unknown>(
   const data = await res.json()
 
   if (!res.ok) {
-    throw new Error(data.error || 'Error en la peticion')
+    const err = new Error(data.error || 'Error en la peticion') as Error & { status: number }
+    err.status = res.status
+    throw err
   }
 
   return data as T

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query'
+import { useAuthStore } from './stores/authStore'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
@@ -12,12 +13,24 @@ import { EmployeeDetailPage } from './pages/employees/EmployeeDetailPage'
 import { InventoryPage } from './pages/inventory/InventoryPage'
 import { MaterialsPage } from './pages/inventory/MaterialsPage'
 import { SuppliersPage } from './pages/suppliers/SuppliersPage'
+import { QuotesPage } from './pages/quotes/QuotesPage'
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error: unknown) => {
+      if ((error as any)?.status === 401) {
+        useAuthStore.getState().logout()
+        window.location.replace('/login')
+      }
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      retry: 1,
+      retry: (failureCount, error: unknown) => {
+        if ((error as any)?.status === 401) return false
+        return failureCount < 1
+      },
     },
   },
 })
@@ -40,6 +53,7 @@ export default function App() {
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/materiales" element={<MaterialsPage />} />
             <Route path="/proveedores" element={<SuppliersPage />} />
+            <Route path="/cotizaciones" element={<QuotesPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,25 +1,34 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Trash2, UserPlus, AlertTriangle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, UserPlus, AlertTriangle, CheckCircle, FileDown, Truck, X } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { Select } from '../../components/ui/Select'
 import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { Table } from '../../components/ui/Table'
+import { PasswordConfirmModal } from '../../components/ui/PasswordConfirmModal'
 
 export function OrderDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { get, post, put, patch, del } = useApi()
+  const { get, post, put, patch, del, download } = useApi()
   const queryClient = useQueryClient()
+  const [downloading, setDownloading] = useState(false)
   const [itemModal, setItemModal] = useState(false)
   const [employeeModal, setEmployeeModal] = useState(false)
   const [itemForm, setItemForm] = useState({ uniform_type: '', quantity: '', price_per_unit: '' })
   const [empForm, setEmpForm] = useState({ name: '', department: '', position: '' })
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null)
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false)
+  const [statusPwError, setStatusPwError] = useState('')
+  const [poModal, setPoModal] = useState(false)
+  const [poSupplierId, setPoSupplierId] = useState('')
+  const [poRows, setPoRows] = useState([{ material_id: '', quantity: '', unit_price: '' }])
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', id],
@@ -32,9 +41,36 @@ export function OrderDetailPage() {
     enabled: !!order && order.order_items?.length > 0,
   })
 
+  const { data: purchaseOrders = [] } = useQuery<any[]>({
+    queryKey: ['orders', id, 'purchase-orders'],
+    queryFn: () => get<any[]>(`/api/orders/${id}/purchase-orders`),
+    enabled: !!id,
+  })
+
+  const { data: suppliers = [] } = useQuery<any[]>({
+    queryKey: ['suppliers'],
+    queryFn: () => get<any[]>('/api/suppliers'),
+    enabled: poModal,
+  })
+
+  const { data: materials = [] } = useQuery<any[]>({
+    queryKey: ['materials'],
+    queryFn: () => get<any[]>('/api/materials'),
+    enabled: poModal,
+  })
+
   const statusMutation = useMutation({
-    mutationFn: (status: string) => patch(`/api/orders/${id}/status`, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orders', id] }),
+    mutationFn: ({ status, password }: { status: string; password: string }) =>
+      patch(`/api/orders/${id}/status`, { status, password }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', id] })
+      setPendingStatus(null)
+      setStatusConfirmOpen(false)
+      setStatusPwError('')
+    },
+    onError: (err: any) => {
+      setStatusPwError(err?.message || 'Contraseña incorrecta o sin permisos suficientes')
+    },
   })
 
   const updateMutation = useMutation({
@@ -68,6 +104,60 @@ export function OrderDetailPage() {
       setEmpForm({ name: '', department: '', position: '' })
     },
   })
+
+  const createPoMutation = useMutation({
+    mutationFn: (data: any) => post('/api/purchase-orders', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', id, 'purchase-orders'] })
+      closePoModal()
+    },
+  })
+
+  const updatePoStatusMutation = useMutation({
+    mutationFn: ({ poId, status }: { poId: string; status: string }) =>
+      patch(`/api/purchase-orders/${poId}/status`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', id, 'purchase-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+
+  const handleDownloadQuotation = async () => {
+    setDownloading(true)
+    try {
+      const blob = await download(`/api/orders/${id}/quotation`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Cotizacion-${id?.slice(0, 8).toUpperCase()}.docx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err?.message || 'Error al generar la cotización')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const closePoModal = () => {
+    setPoModal(false)
+    setPoSupplierId('')
+    setPoRows([{ material_id: '', quantity: '', unit_price: '' }])
+  }
+
+  const handleCreatePo = () => {
+    const items = poRows
+      .filter((r) => r.material_id && r.quantity)
+      .map((r) => ({
+        material_id: r.material_id,
+        quantity: Number(r.quantity),
+        unit_price: r.unit_price ? Number(r.unit_price) : undefined,
+      }))
+    if (!poSupplierId || items.length === 0) return
+    createPoMutation.mutate({ supplier_id: poSupplierId, order_id: id, items })
+  }
 
   if (isLoading) return <div className="text-gray-400">Cargando...</div>
   if (!order) return <div className="text-gray-400">Pedido no encontrado</div>
@@ -151,6 +241,80 @@ export function OrderDetailPage() {
             </Card>
           )}
 
+          {/* Purchase orders */}
+          <Card
+            title="Pedidos a proveedores"
+            action={
+              <Button size="sm" onClick={() => setPoModal(true)}>
+                <Plus className="h-3.5 w-3.5" /> Nueva orden
+              </Button>
+            }
+          >
+            {purchaseOrders.length === 0 ? (
+              <p className="text-sm text-gray-400">Sin pedidos a proveedores registrados</p>
+            ) : (
+              <div className="space-y-3">
+                {purchaseOrders.map((po: any) => (
+                  <div key={po.id} className="border border-gray-100 rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-900">{po.suppliers?.name}</span>
+                        <Badge status={po.status} />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-400 mr-1">
+                          {new Date(po.created_at).toLocaleDateString()}
+                        </span>
+                        {po.status === 'pendiente' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => updatePoStatusMutation.mutate({ poId: po.id, status: 'enviada' })}
+                              disabled={updatePoStatusMutation.isPending}
+                            >
+                              Enviada
+                            </Button>
+                            <button
+                              onClick={() => {
+                                if (confirm('¿Cancelar esta orden de compra?'))
+                                  updatePoStatusMutation.mutate({ poId: po.id, status: 'cancelada' })
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-500 rounded"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                        {po.status === 'enviada' && (
+                          <Button
+                            size="sm"
+                            onClick={() => updatePoStatusMutation.mutate({ poId: po.id, status: 'recibida' })}
+                            disabled={updatePoStatusMutation.isPending}
+                          >
+                            Recibida
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {po.purchase_order_items?.map((item: any) => (
+                        <div key={item.id} className="px-4 py-2 flex items-center justify-between text-sm">
+                          <span className="text-gray-700">{item.materials?.name}</span>
+                          <span className="text-gray-500">
+                            {item.quantity} {item.materials?.unit}
+                            {item.unit_price ? ` · $${Number(item.unit_price).toLocaleString()}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           {/* Employees */}
           <Card
             title="Empleados"
@@ -217,6 +381,17 @@ export function OrderDetailPage() {
                   {new Date(order.created_at).toLocaleDateString()}
                 </p>
               </div>
+              <div className="pt-2 border-t border-gray-100">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={handleDownloadQuotation}
+                  disabled={downloading}
+                >
+                  <FileDown className="h-4 w-4" />
+                  {downloading ? 'Generando...' : 'Descargar cotización'}
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -225,18 +400,46 @@ export function OrderDetailPage() {
               {statusOptions.map((s) => (
                 <button
                   key={s}
-                  onClick={() => statusMutation.mutate(s)}
-                  disabled={order.status === s}
+                  onClick={() => {
+                    if (order.status === s) return
+                    setPendingStatus(pendingStatus === s ? null : s)
+                  }}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                     order.status === s
-                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      ? 'bg-primary-50 text-primary-700 font-medium cursor-default'
+                      : pendingStatus === s
+                      ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-300'
                       : 'text-gray-600 hover:bg-gray-50'
-                  } disabled:cursor-default`}
+                  }`}
                 >
                   <Badge status={s} />
                 </button>
               ))}
             </div>
+            {pendingStatus && pendingStatus !== order.status && (
+              <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                <p className="text-xs text-gray-500">
+                  Cambiando a: <span className="font-medium text-gray-700">{pendingStatus}</span>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setPendingStatus(null)}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => { setStatusPwError(''); setStatusConfirmOpen(true) }}
+                    className="flex-1"
+                  >
+                    Confirmar cambio
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </div>
@@ -270,6 +473,102 @@ export function OrderDetailPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Create purchase order modal */}
+      <Modal open={poModal} onClose={closePoModal} title="Nueva orden de compra">
+        <div className="space-y-4">
+          <Select
+            label="Proveedor *"
+            value={poSupplierId}
+            onChange={(e) => setPoSupplierId(e.target.value)}
+            options={suppliers.map((s: any) => ({ value: s.id, label: s.name }))}
+          />
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Materiales *</label>
+              <button
+                type="button"
+                onClick={() => setPoRows((r) => [...r, { material_id: '', quantity: '', unit_price: '' }])}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                + Agregar fila
+              </button>
+            </div>
+            <div className="space-y-2">
+              {poRows.map((row, i) => (
+                <div key={i} className="grid grid-cols-[1fr_80px_90px_24px] gap-2 items-center">
+                  <Select
+                    value={row.material_id}
+                    onChange={(e) =>
+                      setPoRows((rows) => rows.map((r, j) => j === i ? { ...r, material_id: e.target.value } : r))
+                    }
+                    options={materials.map((m: any) => ({ value: m.id, label: `${m.name} (${m.unit})` }))}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Cant."
+                    value={row.quantity}
+                    onChange={(e) =>
+                      setPoRows((rows) => rows.map((r, j) => j === i ? { ...r, quantity: e.target.value } : r))
+                    }
+                    min="0.01"
+                    step="0.01"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="$ Unit."
+                    value={row.unit_price}
+                    onChange={(e) =>
+                      setPoRows((rows) => rows.map((r, j) => j === i ? { ...r, unit_price: e.target.value } : r))
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPoRows((rows) => rows.filter((_, j) => j !== i))}
+                    disabled={poRows.length === 1}
+                    className="text-gray-300 hover:text-red-500 disabled:opacity-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {createPoMutation.isError && (
+            <p className="text-sm text-red-500">
+              {(createPoMutation.error as any)?.message || 'Error al crear la orden'}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={closePoModal}>Cancelar</Button>
+            <Button
+              onClick={handleCreatePo}
+              disabled={createPoMutation.isPending || !poSupplierId || poRows.every((r) => !r.material_id)}
+            >
+              {createPoMutation.isPending ? 'Creando...' : 'Crear orden'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Status change confirmation */}
+      <PasswordConfirmModal
+        open={statusConfirmOpen}
+        onClose={() => { setStatusConfirmOpen(false); setStatusPwError('') }}
+        onConfirm={(password) => {
+          if (pendingStatus) statusMutation.mutate({ status: pendingStatus, password })
+        }}
+        title="Confirmar cambio de estado"
+        description={`El pedido cambiará de "${order.status}" a "${pendingStatus}". Esta accion requiere autorización del administrador.`}
+        confirmLabel="Confirmar cambio"
+        isPending={statusMutation.isPending}
+        error={statusPwError}
+      />
     </div>
   )
 }

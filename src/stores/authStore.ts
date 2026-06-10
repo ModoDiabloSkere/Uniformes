@@ -15,9 +15,27 @@ interface AuthState {
   logout: () => void
 }
 
+function isTokenValid(token: string | null): boolean {
+  if (!token) return false
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    // 10 segundos de margen para evitar race conditions
+    return payload.exp * 1000 > Date.now() + 10_000
+  } catch {
+    return false
+  }
+}
+
+const storedToken = localStorage.getItem('token')
+const validToken = isTokenValid(storedToken) ? storedToken : null
+if (!validToken) {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  token: localStorage.getItem('token'),
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  token: validToken,
+  user: validToken ? JSON.parse(localStorage.getItem('user') || 'null') : null,
 
   setAuth: (token, user) => {
     localStorage.setItem('token', token)

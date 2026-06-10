@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Building2, Trash2, Pencil } from 'lucide-react'
+import { Plus, Search, Building2, Trash2, Pencil, AlertTriangle, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
@@ -47,9 +47,21 @@ export function ClientsPage() {
     },
   })
 
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => del(`/api/clients/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] })
+      setDeleteError(null)
+    },
+    onError: (err: any) => {
+      setDeleteError(
+        err?.message?.includes('foreign key') || err?.message?.includes('violates')
+          ? 'No se puede eliminar: el cliente tiene pedidos registrados. Elimina primero los pedidos.'
+          : err?.message || 'Error al eliminar el cliente'
+      )
+    },
   })
 
   const filtered = clients.filter((c) =>
@@ -68,6 +80,16 @@ export function ClientsPage() {
           </Button>
         }
       />
+
+      {deleteError && (
+        <div className="mb-4 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="text-red-400 hover:text-red-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Card>
         <div className="mb-4">

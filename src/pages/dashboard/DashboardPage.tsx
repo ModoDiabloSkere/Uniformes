@@ -18,7 +18,7 @@ interface DashboardData {
   low_stock_count: number
   monthly_revenue: number
   low_stock_items: any[]
-  recent_activity: any[]
+
 }
 
 export function DashboardPage() {
@@ -111,7 +111,7 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="max-w-lg">
             <Card title="Alertas de stock bajo">
               {data?.low_stock_items && data.low_stock_items.length > 0 ? (
                 <ul className="space-y-3">
@@ -133,23 +133,6 @@ export function DashboardPage() {
                 <p className="text-sm text-gray-400">
                   No hay alertas de stock
                 </p>
-              )}
-            </Card>
-
-            <Card title="Actividad reciente">
-              {data?.recent_activity && data.recent_activity.length > 0 ? (
-                <ul className="space-y-3">
-                  {data.recent_activity.map((log: any) => (
-                    <li key={log.id} className="text-sm">
-                      <p className="text-gray-700">{log.details}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(log.created_at).toLocaleString()}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-400">No hay actividad</p>
               )}
             </Card>
           </div>

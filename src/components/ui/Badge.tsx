@@ -6,9 +6,14 @@ const colors: Record<string, string> = {
   terminado: 'bg-emerald-100 text-emerald-700',
   entregado: 'bg-green-100 text-green-700',
   cancelado: 'bg-red-100 text-red-700',
+  cancelada: 'bg-red-100 text-red-700',
   pendiente: 'bg-yellow-100 text-yellow-700',
   enviada: 'bg-blue-100 text-blue-700',
   recibida: 'bg-green-100 text-green-700',
+  por_terminar: 'bg-orange-100 text-orange-700',
+  terminada: 'bg-emerald-100 text-emerald-700',
+  entrada: 'bg-green-100 text-green-700',
+  ajuste: 'bg-gray-100 text-gray-600',
 }
 
 const labels: Record<string, string> = {
@@ -19,9 +24,14 @@ const labels: Record<string, string> = {
   terminado: 'Terminado',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
+  cancelada: 'Cancelada',
   pendiente: 'Pendiente',
   enviada: 'Enviada',
   recibida: 'Recibida',
+  por_terminar: 'Por terminar',
+  terminada: 'Terminada',
+  entrada: 'Entrada',
+  ajuste: 'Ajuste',
 }
 
 interface BadgeProps {

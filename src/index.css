@@ -2,17 +2,32 @@
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
-  --color-primary-950: #172554;
+
+  /* Rojo D'Johanna */
+  --color-primary-50: #fff1f2;
+  --color-primary-100: #ffdfe3;
+  --color-primary-200: #ffc5cb;
+  --color-primary-300: #ff9aa4;
+  --color-primary-400: #ff5f6e;
+  --color-primary-500: #ff2d42;
+  --color-primary-600: #f01030;
+  --color-primary-700: #c01230;
+  --color-primary-800: #9f1229;
+  --color-primary-900: #841426;
+  --color-primary-950: #490610;
+
+  /* Oliva/Dorado D'Johanna */
+  --color-accent-50: #f9f8f1;
+  --color-accent-100: #f0eedd;
+  --color-accent-200: #e0dabb;
+  --color-accent-300: #ccc494;
+  --color-accent-400: #b7ac6c;
+  --color-accent-500: #9e9856;
+  --color-accent-600: #8a8a5a;
+  --color-accent-700: #706e46;
+  --color-accent-800: #5c5a3b;
+  --color-accent-900: #4d4c33;
+  --color-accent-950: #2a291a;
 }
 
 body {

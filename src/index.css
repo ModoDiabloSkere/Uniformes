@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --spacing-18: 4.5rem;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
   /* Rojo D'Johanna */

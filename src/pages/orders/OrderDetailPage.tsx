@@ -448,7 +448,7 @@ export function OrderDetailPage() {
       <Modal open={itemModal} onClose={() => setItemModal(false)} title="Agregar item">
         <form onSubmit={(e) => { e.preventDefault(); addItemMutation.mutate({ uniform_type: itemForm.uniform_type, quantity: Number(itemForm.quantity), price_per_unit: Number(itemForm.price_per_unit) }) }} className="space-y-4">
           <Input label="Tipo de uniforme *" value={itemForm.uniform_type} onChange={(e) => setItemForm({ ...itemForm, uniform_type: e.target.value })} required placeholder="Ej: Camisa ejecutiva" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Cantidad *" type="number" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} required min="1" />
             <Input label="Precio unitario *" type="number" value={itemForm.price_per_unit} onChange={(e) => setItemForm({ ...itemForm, price_per_unit: e.target.value })} required min="0" step="0.01" />
           </div>
@@ -463,7 +463,7 @@ export function OrderDetailPage() {
       <Modal open={employeeModal} onClose={() => setEmployeeModal(false)} title="Agregar empleado">
         <form onSubmit={(e) => { e.preventDefault(); addEmployeeMutation.mutate(empForm) }} className="space-y-4">
           <Input label="Nombre completo *" value={empForm.name} onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })} required />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Departamento" value={empForm.department} onChange={(e) => setEmpForm({ ...empForm, department: e.target.value })} />
             <Input label="Cargo" value={empForm.position} onChange={(e) => setEmpForm({ ...empForm, position: e.target.value })} />
           </div>

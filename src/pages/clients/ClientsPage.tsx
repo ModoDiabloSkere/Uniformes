@@ -194,7 +194,7 @@ export function ClientsPage() {
             onChange={(e) => setForm({ ...form, industry: e.target.value })}
             placeholder="Ej: Restaurantes, Salud, Corporativo"
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Telefono"
               value={form.phone}

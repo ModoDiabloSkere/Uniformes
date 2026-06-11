@@ -84,7 +84,7 @@ export function SuppliersPage() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo proveedor">
         <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form) }} className="space-y-4">
           <Input label="Nombre *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Telefono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>

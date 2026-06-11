@@ -69,7 +69,7 @@ export function EmployeeDetailPage() {
             className="space-y-4"
           >
             <Input label="Nombre" name="name" defaultValue={employee.name} />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Departamento" name="department" defaultValue={employee.department || ''} />
               <Input label="Cargo" name="position" defaultValue={employee.position || ''} />
             </div>
@@ -96,7 +96,7 @@ export function EmployeeDetailPage() {
             }}
             className="space-y-4"
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {measurementFields.map((f) => (
                 <Input
                   key={f.key}

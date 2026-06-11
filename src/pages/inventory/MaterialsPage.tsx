@@ -80,7 +80,7 @@ export function MaterialsPage() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo material">
         <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form) }} className="space-y-4">
           <Input label="Nombre *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Categoria" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Ej: Telas, Botones" />
             <Input label="Unidad *" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} required placeholder="metros, piezas, rollos" />
           </div>

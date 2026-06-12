@@ -59,6 +59,12 @@ export function OrderDetailPage() {
     enabled: poModal,
   })
 
+  const { data: catalogProducts = [] } = useQuery<any[]>({
+    queryKey: ['products'],
+    queryFn: () => get<any[]>('/api/products'),
+    enabled: itemModal,
+  })
+
   const statusMutation = useMutation({
     mutationFn: ({ status, password }: { status: string; password: string }) =>
       patch(`/api/orders/${id}/status`, { status, password }),
@@ -345,55 +351,115 @@ export function OrderDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <Card title="Informacion">
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="text-gray-500">Total</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${Number(order.total_price).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500">Anticipo (50%)</p>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    defaultValue={order.advance_payment}
-                    onBlur={(e) =>
-                      updateMutation.mutate({ advance_payment: Number(e.target.value) })
-                    }
-                  />
+          {/* Resumen financiero */}
+          <Card title="Resumen financiero">
+            {(() => {
+              const subtotal = (order.order_items || []).reduce(
+                (sum: number, i: any) => sum + i.quantity * i.price_per_unit, 0
+              )
+              const applyIva = order.apply_iva !== false
+              const iva = applyIva ? subtotal * 0.16 : 0
+              const total = subtotal + iva
+              const anticipo = total * 0.5
+              const fmt = (n: number) =>
+                n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              return (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>${fmt(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-gray-600">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={applyIva}
+                        onChange={(e) => updateMutation.mutate({ apply_iva: e.target.checked })}
+                      />
+                      IVA (16%)
+                    </label>
+                    <span>${fmt(iva)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-gray-900 border-t border-gray-100 pt-2">
+                    <span>Total</span>
+                    <span className="text-lg">${fmt(total)}</span>
+                  </div>
+                  <div className="bg-primary-50 rounded-lg px-3 py-2.5 mt-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-primary-700 font-medium">Anticipo (50%)</span>
+                      <span className="text-primary-800 font-bold text-base">${fmt(anticipo)}</span>
+                    </div>
+                    <p className="text-xs text-primary-500 mt-0.5">Calculado automáticamente · no editable</p>
+                  </div>
                 </div>
-              </div>
+              )
+            })()}
+          </Card>
+
+          {/* Datos del pedido */}
+          <Card title="Datos del pedido">
+            <div className="space-y-3 text-sm">
               <div>
-                <p className="text-gray-500">Fecha de entrega</p>
+                <p className="text-gray-500 mb-1">Temporada</p>
                 <Input
-                  type="date"
-                  defaultValue={order.delivery_date || ''}
-                  onBlur={(e) =>
-                    updateMutation.mutate({ delivery_date: e.target.value })
-                  }
+                  placeholder="Ej: Otoño Invierno 2026"
+                  defaultValue={order.season || ''}
+                  onBlur={(e) => updateMutation.mutate({ season: e.target.value })}
                 />
               </div>
               <div>
-                <p className="text-gray-500">Creado</p>
-                <p className="font-medium text-gray-900">
-                  {new Date(order.created_at).toLocaleDateString()}
-                </p>
+                <p className="text-gray-500 mb-1">Días de entrega (hábiles)</p>
+                <Input
+                  type="number"
+                  defaultValue={order.delivery_days ?? 45}
+                  min="1"
+                  onBlur={(e) => updateMutation.mutate({ delivery_days: Number(e.target.value) })}
+                />
               </div>
-              <div className="pt-2 border-t border-gray-100">
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={handleDownloadQuotation}
-                  disabled={downloading}
-                >
-                  <FileDown className="h-4 w-4" />
-                  {downloading ? 'Generando...' : 'Descargar cotización'}
-                </Button>
+              <div>
+                <p className="text-gray-500 mb-1">Fecha toma de medidas</p>
+                <Input
+                  type="date"
+                  defaultValue={order.measurements_date || ''}
+                  onBlur={(e) => updateMutation.mutate({ measurements_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <p className="text-gray-500 mb-1">Fecha de entrega</p>
+                <Input
+                  type="date"
+                  defaultValue={order.delivery_date || ''}
+                  onBlur={(e) => updateMutation.mutate({ delivery_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <p className="text-gray-500 mb-1">Información adicional</p>
+                <textarea
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  rows={3}
+                  placeholder="Notas, especificaciones, ajustes..."
+                  defaultValue={order.additional_info || ''}
+                  onBlur={(e) => updateMutation.mutate({ additional_info: e.target.value })}
+                />
+              </div>
+              <div className="pt-1 text-xs text-gray-400">
+                Creado: {new Date(order.created_at).toLocaleDateString('es-MX')}
               </div>
             </div>
           </Card>
+
+          <div>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={handleDownloadQuotation}
+              disabled={downloading}
+            >
+              <FileDown className="h-4 w-4" />
+              {downloading ? 'Generando...' : 'Descargar cotización'}
+            </Button>
+          </div>
 
           <Card title="Cambiar estado">
             <div className="space-y-2">
@@ -447,7 +513,24 @@ export function OrderDetailPage() {
       {/* Add item modal */}
       <Modal open={itemModal} onClose={() => setItemModal(false)} title="Agregar item">
         <form onSubmit={(e) => { e.preventDefault(); addItemMutation.mutate({ uniform_type: itemForm.uniform_type, quantity: Number(itemForm.quantity), price_per_unit: Number(itemForm.price_per_unit) }) }} className="space-y-4">
-          <Input label="Tipo de uniforme *" value={itemForm.uniform_type} onChange={(e) => setItemForm({ ...itemForm, uniform_type: e.target.value })} required placeholder="Ej: Camisa ejecutiva" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar del catálogo</label>
+            <select
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) setItemForm({ ...itemForm, uniform_type: e.target.value })
+              }}
+            >
+              <option value="">— Elegir producto —</option>
+              {catalogProducts.map((p: any) => (
+                <option key={p.id} value={`${p.name}${p.model_ref ? ` (${p.model_ref})` : ''}`}>
+                  {p.product_categories?.name} · {p.name}{p.model_ref ? ` — ${p.model_ref}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Input label="Descripción del uniforme *" value={itemForm.uniform_type} onChange={(e) => setItemForm({ ...itemForm, uniform_type: e.target.value })} required placeholder="Se rellena al elegir del catálogo o escribe manualmente" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Cantidad *" type="number" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} required min="1" />
             <Input label="Precio unitario *" type="number" value={itemForm.price_per_unit} onChange={(e) => setItemForm({ ...itemForm, price_per_unit: e.target.value })} required min="0" step="0.01" />

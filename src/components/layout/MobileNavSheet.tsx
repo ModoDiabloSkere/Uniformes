@@ -52,7 +52,7 @@ export function MobileNavSheet({ open, onClose }: MobileNavSheetProps) {
                 }`
               }
             >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <item.icon className="h-6 w-6 flex-shrink-0" />
               {item.label}
             </NavLink>
           ))}
@@ -64,7 +64,7 @@ export function MobileNavSheet({ open, onClose }: MobileNavSheetProps) {
             onClick={() => { logout(); onClose() }}
             className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-6 w-6" />
             Cerrar sesion
           </button>
         </div>

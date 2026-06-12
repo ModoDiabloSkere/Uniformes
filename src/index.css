@@ -4,6 +4,15 @@
   --spacing-18: 4.5rem;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
+  /* Tipografia escalada para mejor legibilidad */
+  --text-xs: 0.875rem;    /* 14px */
+  --text-sm: 1rem;        /* 16px */
+  --text-base: 1.125rem;  /* 18px */
+  --text-lg: 1.25rem;     /* 20px */
+  --text-xl: 1.5rem;      /* 24px */
+  --text-2xl: 1.75rem;    /* 28px */
+  --text-3xl: 2rem;       /* 32px */
+
   /* Rojo D'Johanna */
   --color-primary-50: #fff1f2;
   --color-primary-100: #ffdfe3;

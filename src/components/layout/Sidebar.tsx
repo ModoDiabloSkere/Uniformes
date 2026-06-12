@@ -11,9 +11,9 @@ export function Sidebar() {
     <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 flex-col">
       <div className="px-4 py-5 border-b border-gray-100">
         <img
-          src="/images/logo.jpg"
+          src="/images/logo.png"
           alt="Uniformes D'Johanna"
-          className="h-10 w-auto object-contain"
+          className="h-14 w-auto object-contain"
         />
       </div>
 
@@ -30,7 +30,7 @@ export function Sidebar() {
               }`
             }
           >
-            <item.icon className="h-5 w-5 flex-shrink-0" />
+            <item.icon className="h-6 w-6 flex-shrink-0" />
             {item.label}
           </NavLink>
         ))}
@@ -45,7 +45,7 @@ export function Sidebar() {
           onClick={logout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-6 w-6" />
           Cerrar sesion
         </button>
       </div>

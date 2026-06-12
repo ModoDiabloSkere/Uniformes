@@ -19,15 +19,15 @@ export function AppLayout() {
       {/* Top bar — solo movil */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4">
         <img
-          src="/images/logo.jpg"
+          src="/images/logo.png"
           alt="Uniformes D'Johanna"
-          className="h-8 w-auto object-contain"
+          className="h-10 w-auto object-contain"
         />
         <button
           onClick={() => setNavOpen(true)}
           className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-6 w-6" />
         </button>
       </div>
 

@@ -14,6 +14,7 @@ import { InventoryPage } from './pages/inventory/InventoryPage'
 import { MaterialsPage } from './pages/inventory/MaterialsPage'
 import { SuppliersPage } from './pages/suppliers/SuppliersPage'
 import { QuotesPage } from './pages/quotes/QuotesPage'
+import { CatalogPage } from './pages/catalog/CatalogPage'
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/materiales" element={<MaterialsPage />} />
             <Route path="/proveedores" element={<SuppliersPage />} />
             <Route path="/cotizaciones" element={<QuotesPage />} />
+            <Route path="/catalogo" element={<CatalogPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

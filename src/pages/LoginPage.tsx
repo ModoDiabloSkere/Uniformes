@@ -39,18 +39,13 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-950 via-primary-900 to-primary-800 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mb-4">
-            <img src="/images/logo.jpg" alt="Uniformes D'Johanna" className="h-28 w-auto object-contain mx-auto drop-shadow-lg" />
-          </div>
-          <p className="text-primary-200 text-sm mt-1">
-            Sistema de gestion interno
-          </p>
+          <img src="/images/logo.png" alt="Uniformes D'Johanna" className="h-28 w-auto object-contain mx-auto" />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
             Iniciar sesion
           </h2>

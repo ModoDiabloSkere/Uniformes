@@ -11,12 +11,33 @@ export async function api<T = unknown>(
 ): Promise<T> {
   const { method = 'GET', body } = options
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  // Enviar tokens desde localStorage como respaldo cuando
+  // las cookies cross-origin son bloqueadas por el navegador
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const refreshToken = localStorage.getItem('refresh_token')
+  if (refreshToken) {
+    headers['X-Refresh-Token'] = refreshToken
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
     body: body ? JSON.stringify(body) : undefined,
   })
+
+  // Si el middleware renovó los tokens, actualizarlos en localStorage
+  const newAccessToken = res.headers.get('X-New-Access-Token')
+  const newRefreshToken = res.headers.get('X-New-Refresh-Token')
+  if (newAccessToken) localStorage.setItem('access_token', newAccessToken)
+  if (newRefreshToken) localStorage.setItem('refresh_token', newRefreshToken)
 
   const data = await res.json()
 

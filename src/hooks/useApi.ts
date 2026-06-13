@@ -18,7 +18,10 @@ export function useApi() {
     del: <T = unknown>(path: string) => api<T>(path, { method: 'DELETE' }),
 
     download: async (path: string): Promise<Blob> => {
-      const res = await fetch(`${API_URL}${path}`, { credentials: 'include' })
+      const headers: Record<string, string> = {}
+      const token = localStorage.getItem('access_token')
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${API_URL}${path}`, { credentials: 'include', headers })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error((data as any).error || 'Error al descargar el archivo')

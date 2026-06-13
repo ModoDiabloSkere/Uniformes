@@ -91,18 +91,6 @@ export function ClientDetailPage() {
                   defaultValue={client.industry || ''}
                 />
                 <Input
-                  label="Telefono"
-                  name="phone"
-                  defaultValue={client.phone || ''}
-                />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Input
-                  label="Email"
-                  name="email"
-                  defaultValue={client.email || ''}
-                />
-                <Input
                   label="Direccion"
                   name="address"
                   defaultValue={client.address || ''}

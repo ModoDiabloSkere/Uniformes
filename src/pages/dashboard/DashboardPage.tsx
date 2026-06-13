@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../../components/ui/Card'
@@ -23,7 +24,7 @@ interface DashboardData {
 
 export function DashboardPage() {
   const { get } = useApi()
-  const { data, isLoading } = useQuery<DashboardData>({
+  const { data, isLoading, isError, refetch } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () => get('/api/dashboard'),
   })
@@ -87,6 +88,23 @@ export function DashboardPage() {
               className="h-28 bg-white rounded-xl border border-gray-200 animate-pulse"
             />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+            <AlertTriangle className="h-7 w-7 text-red-500" />
+          </div>
+          <div>
+            <p className="text-base font-medium text-gray-800">No se pudieron cargar los datos</p>
+            <p className="text-sm text-gray-500 mt-1">Verifica tu conexion o vuelve a intentarlo</p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reintentar
+          </button>
         </div>
       ) : (
         <>

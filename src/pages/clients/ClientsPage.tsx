@@ -14,8 +14,6 @@ interface Client {
   id: string
   company_name: string
   industry: string | null
-  phone: string | null
-  email: string | null
   client_contacts: any[]
 }
 
@@ -28,8 +26,6 @@ export function ClientsPage() {
   const [form, setForm] = useState({
     company_name: '',
     industry: '',
-    phone: '',
-    email: '',
     address: '',
   })
 
@@ -43,7 +39,7 @@ export function ClientsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] })
       setModalOpen(false)
-      setForm({ company_name: '', industry: '', phone: '', email: '', address: '' })
+      setForm({ company_name: '', industry: '', address: '' })
     },
   })
 
@@ -123,8 +119,6 @@ export function ClientsPage() {
                 ),
               },
               { key: 'industry', header: 'Industria' },
-              { key: 'phone', header: 'Telefono' },
-              { key: 'email', header: 'Email' },
               {
                 key: 'contacts',
                 header: 'Contactos',
@@ -194,19 +188,6 @@ export function ClientsPage() {
             onChange={(e) => setForm({ ...form, industry: e.target.value })}
             placeholder="Ej: Restaurantes, Salud, Corporativo"
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Telefono"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-          </div>
           <Input
             label="Direccion"
             value={form.address}

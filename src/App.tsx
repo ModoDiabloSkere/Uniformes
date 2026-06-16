@@ -11,7 +11,6 @@ import { OrderDetailPage } from './pages/orders/OrderDetailPage'
 import { ProductionPage } from './pages/orders/ProductionPage'
 import { EmployeeDetailPage } from './pages/employees/EmployeeDetailPage'
 import { InventoryPage } from './pages/inventory/InventoryPage'
-import { MaterialsPage } from './pages/inventory/MaterialsPage'
 import { SuppliersPage } from './pages/suppliers/SuppliersPage'
 import { QuotesPage } from './pages/quotes/QuotesPage'
 import { CatalogPage } from './pages/catalog/CatalogPage'
@@ -52,7 +51,6 @@ export default function App() {
             <Route path="/produccion" element={<ProductionPage />} />
             <Route path="/empleados/:id" element={<EmployeeDetailPage />} />
             <Route path="/inventario" element={<InventoryPage />} />
-            <Route path="/materiales" element={<MaterialsPage />} />
             <Route path="/proveedores" element={<SuppliersPage />} />
             <Route path="/cotizaciones" element={<QuotesPage />} />
             <Route path="/catalogo" element={<CatalogPage />} />

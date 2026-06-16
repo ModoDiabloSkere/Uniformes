@@ -21,7 +21,14 @@ export function OrderDetailPage() {
   const [downloading, setDownloading] = useState(false)
   const [itemModal, setItemModal] = useState(false)
   const [employeeModal, setEmployeeModal] = useState(false)
-  const [itemForm, setItemForm] = useState({ uniform_type: '', quantity: '', price_per_unit: '' })
+  const [itemForm, setItemForm] = useState({
+    piece_type: '',
+    fabric_id: '',
+    model_id: '',
+    quantity: '',
+    price_per_unit: '',
+    item_notes: '',
+  })
   const [empForm, setEmpForm] = useState({ name: '', department: '', position: '' })
   const [pendingStatus, setPendingStatus] = useState<string | null>(null)
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false)
@@ -59,9 +66,16 @@ export function OrderDetailPage() {
     enabled: poModal,
   })
 
-  const { data: catalogProducts = [] } = useQuery<any[]>({
-    queryKey: ['products'],
-    queryFn: () => get<any[]>('/api/products'),
+  const { data: fabrics = [] } = useQuery<any[]>({
+    queryKey: ['fabrics-active'],
+    queryFn: () => get<any[]>('/api/materials?limit=200'),
+    select: (data: any[]) => data.filter((m) => m.fabric_type),
+    enabled: itemModal,
+  })
+
+  const { data: models = [] } = useQuery<any[]>({
+    queryKey: ['models-active'],
+    queryFn: () => get<any[]>('/api/models?active=true'),
     enabled: itemModal,
   })
 
@@ -90,7 +104,7 @@ export function OrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['orders', id] })
       queryClient.invalidateQueries({ queryKey: ['orders', id, 'check'] })
       setItemModal(false)
-      setItemForm({ uniform_type: '', quantity: '', price_per_unit: '' })
+      setItemForm({ piece_type: '', fabric_id: '', model_id: '', quantity: '', price_per_unit: '', item_notes: '' })
     },
   })
 
@@ -200,13 +214,45 @@ export function OrderDetailPage() {
           >
             <Table
               columns={[
-                { key: 'uniform_type', header: 'Tipo de uniforme', render: (r: any) => <span className="font-medium">{r.uniform_type}</span> },
-                { key: 'quantity', header: 'Cantidad' },
-                { key: 'price_per_unit', header: 'Precio unit.', render: (r: any) => `$${Number(r.price_per_unit).toLocaleString()}` },
-                { key: 'subtotal', header: 'Subtotal', render: (r: any) => `$${(r.quantity * r.price_per_unit).toLocaleString()}` },
+                {
+                  key: 'piece_type',
+                  header: 'Pieza',
+                  render: (r: any) => (
+                    <div>
+                      <span className="font-semibold text-gray-900">{r.piece_type || r.uniform_type}</span>
+                      {r.model && (
+                        <span className="ml-1.5 text-xs text-gray-400">
+                          Mod. #{r.model.number} {r.model.season}{r.model.season_year}
+                        </span>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'fabric',
+                  header: 'Tela',
+                  render: (r: any) => r.fabric
+                    ? <span className="text-sm text-gray-700">{r.fabric.name}{r.fabric.code ? ` (${r.fabric.code})` : ''}</span>
+                    : <span className="text-xs text-gray-300">—</span>,
+                },
+                { key: 'quantity', header: 'Cant.' },
+                {
+                  key: 'price_per_unit',
+                  header: 'P. unit.',
+                  render: (r: any) => `$${Number(r.price_per_unit).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+                },
+                {
+                  key: 'subtotal',
+                  header: 'Subtotal',
+                  render: (r: any) => (
+                    <span className="font-medium">
+                      ${(r.quantity * r.price_per_unit).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </span>
+                  ),
+                },
                 {
                   key: 'actions', header: '', render: (r: any) => (
-                    <button onClick={() => { if (confirm('Eliminar item?')) deleteItemMutation.mutate(r.id) }}
+                    <button onClick={() => { if (confirm('¿Eliminar este ítem?')) deleteItemMutation.mutate(r.id) }}
                       className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg">
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -214,7 +260,7 @@ export function OrderDetailPage() {
                 },
               ]}
               data={order.order_items || []}
-              emptyMessage="Sin items"
+              emptyMessage="Sin ítems"
             />
           </Card>
 
@@ -511,33 +557,175 @@ export function OrderDetailPage() {
       </div>
 
       {/* Add item modal */}
-      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Agregar item">
-        <form onSubmit={(e) => { e.preventDefault(); addItemMutation.mutate({ uniform_type: itemForm.uniform_type, quantity: Number(itemForm.quantity), price_per_unit: Number(itemForm.price_per_unit) }) }} className="space-y-4">
+      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Agregar pieza al pedido">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            addItemMutation.mutate({
+              piece_type: itemForm.piece_type,
+              fabric_id: itemForm.fabric_id || null,
+              model_id: itemForm.model_id || null,
+              quantity: Number(itemForm.quantity),
+              price_per_unit: Number(itemForm.price_per_unit),
+              item_notes: itemForm.item_notes || null,
+            })
+          }}
+          className="space-y-4"
+        >
+          {/* Modelo (opcional) — pre-rellena la tela al seleccionar */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar del catálogo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Modelo / Maqueta <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
             <select
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value=""
+              value={itemForm.model_id}
               onChange={(e) => {
-                if (e.target.value) setItemForm({ ...itemForm, uniform_type: e.target.value })
+                const modelId = e.target.value
+                if (!modelId) {
+                  setItemForm({ ...itemForm, model_id: '' })
+                  return
+                }
+                const model = (models as any[]).find((m) => m.id === modelId)
+                if (!model) return
+                const pieceToFabric: Record<string, string> = {
+                  'Blusa': model.blusa_material_id || '',
+                  'Camisa': model.blusa_material_id || '',
+                  'Chaleco': model.chaleco_material_id || '',
+                  'Saco': model.chaleco_material_id || '',
+                  'Pantalón': model.pantalon_material_id || '',
+                  'Falda': model.pantalon_material_id || '',
+                }
+                const suggestedFabric = itemForm.piece_type
+                  ? (pieceToFabric[itemForm.piece_type] || '')
+                  : ''
+                setItemForm({ ...itemForm, model_id: modelId, fabric_id: suggestedFabric })
               }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             >
-              <option value="">— Elegir producto —</option>
-              {catalogProducts.map((p: any) => (
-                <option key={p.id} value={`${p.name}${p.model_ref ? ` (${p.model_ref})` : ''}`}>
-                  {p.product_categories?.name} · {p.name}{p.model_ref ? ` — ${p.model_ref}` : ''}
+              <option value="">— Sin modelo base —</option>
+              {(models as any[]).map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  Modelo #{m.number} · {m.season === 'OI' ? 'Otoño/Invierno' : 'Primavera/Verano'} {m.season_year}
+                </option>
+              ))}
+            </select>
+            {itemForm.model_id && (() => {
+              const m = (models as any[]).find((x) => x.id === itemForm.model_id)
+              if (!m) return null
+              return (
+                <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 space-y-0.5">
+                  {m.blusa_material && <div><span className="text-gray-400">Blusa:</span> {m.blusa_material.name}</div>}
+                  {m.chaleco_material && <div><span className="text-gray-400">Chaleco:</span> {m.chaleco_material.name}</div>}
+                  {m.pantalon_material && <div><span className="text-gray-400">Pantalón:</span> {m.pantalon_material.name}</div>}
+                </div>
+              )
+            })()}
+          </div>
+
+          {/* Tipo de pieza */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de pieza *</label>
+            <select
+              required
+              value={itemForm.piece_type}
+              onChange={(e) => {
+                const pieceType = e.target.value
+                const model = (models as any[]).find((m) => m.id === itemForm.model_id)
+                let suggestedFabric = itemForm.fabric_id
+                if (model) {
+                  const map: Record<string, string> = {
+                    'Blusa': model.blusa_material_id || '',
+                    'Camisa': model.blusa_material_id || '',
+                    'Chaleco': model.chaleco_material_id || '',
+                    'Saco': model.chaleco_material_id || '',
+                    'Pantalón': model.pantalon_material_id || '',
+                    'Falda': model.pantalon_material_id || '',
+                  }
+                  suggestedFabric = map[pieceType] || ''
+                }
+                setItemForm({ ...itemForm, piece_type: pieceType, fabric_id: suggestedFabric })
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            >
+              <option value="">— Seleccionar pieza —</option>
+              <option value="Blusa">Blusa</option>
+              <option value="Camisa">Camisa</option>
+              <option value="Chaleco">Chaleco</option>
+              <option value="Saco">Saco</option>
+              <option value="Pantalón">Pantalón</option>
+              <option value="Falda">Falda</option>
+              <option value="Conjunto">Conjunto completo</option>
+            </select>
+          </div>
+
+          {/* Tela */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tela <span className="text-gray-400 font-normal">(del catálogo)</span>
+            </label>
+            <select
+              value={itemForm.fabric_id}
+              onChange={(e) => setItemForm({ ...itemForm, fabric_id: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            >
+              <option value="">— Seleccionar tela —</option>
+              {(fabrics as any[]).map((f: any) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                  {f.code ? ` (${f.code})` : ''}
+                  {f.fabric_type === 'temporada' ? ` · ${f.season}${f.season_year}` : ' · Línea'}
                 </option>
               ))}
             </select>
           </div>
-          <Input label="Descripción del uniforme *" value={itemForm.uniform_type} onChange={(e) => setItemForm({ ...itemForm, uniform_type: e.target.value })} required placeholder="Se rellena al elegir del catálogo o escribe manualmente" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Cantidad *" type="number" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} required min="1" />
-            <Input label="Precio unitario *" type="number" value={itemForm.price_per_unit} onChange={(e) => setItemForm({ ...itemForm, price_per_unit: e.target.value })} required min="0" step="0.01" />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Cantidad *"
+              type="number"
+              value={itemForm.quantity}
+              onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })}
+              required
+              min="1"
+            />
+            <Input
+              label="Precio unitario *"
+              type="number"
+              value={itemForm.price_per_unit}
+              onChange={(e) => setItemForm({ ...itemForm, price_per_unit: e.target.value })}
+              required
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+            />
           </div>
+
+          {itemForm.quantity && itemForm.price_per_unit && (
+            <div className="bg-primary-50 rounded-lg px-3 py-2 text-sm flex justify-between">
+              <span className="text-primary-700">Subtotal</span>
+              <span className="font-semibold text-primary-800">
+                ${(Number(itemForm.quantity) * Number(itemForm.price_per_unit))
+                  .toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+            <textarea
+              value={itemForm.item_notes}
+              onChange={(e) => setItemForm({ ...itemForm, item_notes: e.target.value })}
+              rows={2}
+              placeholder="Especificaciones, ajustes, detalles adicionales..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none resize-none"
+            />
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setItemModal(false)}>Cancelar</Button>
-            <Button type="submit" disabled={addItemMutation.isPending}>Agregar</Button>
+            <Button type="submit" disabled={addItemMutation.isPending}>
+              {addItemMutation.isPending ? 'Agregando...' : 'Agregar pieza'}
+            </Button>
           </div>
         </form>
       </Modal>

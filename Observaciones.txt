@@ -1,0 +1,16 @@
+Observaciones:
+
+Editar materiales de inventario
+cambiar inserción de materiales
+cambiar la cantidad de precios unitarios por material
+se debe poder editar la pestaña de clientes
+cambiar a los "empleados" por "empleados de la empresa"
+Bug al eliminar los ítems del pedido
+
+Ítems de pedido
+
+
+
+Registro de empelados de la empresa
+
+departamento y cargo se pueden repetir

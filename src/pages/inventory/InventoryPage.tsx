@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Plus, PackagePlus } from 'lucide-react'
+import { AlertTriangle, Plus, PackagePlus, TrendingDown, TrendingUp, RefreshCw } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { Select } from '../../components/ui/Select'
 import { Modal } from '../../components/ui/Modal'
 import { Badge } from '../../components/ui/Badge'
 
 interface EntryForm {
   material_id: string
   quantity: string
+  type: 'entrada' | 'salida' | 'ajuste'
   order_id: string
   notes: string
 }
@@ -24,6 +26,7 @@ export function InventoryPage() {
   const [form, setForm] = useState<EntryForm>({
     material_id: '',
     quantity: '',
+    type: 'entrada',
     order_id: '',
     notes: '',
   })
@@ -50,36 +53,36 @@ export function InventoryPage() {
         quantity: Number(data.quantity),
         order_id: data.order_id || null,
         notes: data.notes || null,
-        type: 'entrada',
+        type: data.type || 'entrada',
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
       queryClient.invalidateQueries({ queryKey: ['inventory-entries'] })
       setEntryModal(false)
-      setForm({ material_id: '', quantity: '', order_id: '', notes: '' })
+      setForm({ material_id: '', quantity: '', type: 'entrada', order_id: '', notes: '' })
     },
   })
 
   const openEntry = (materialId?: string) => {
-    setForm({ material_id: materialId || '', quantity: '', order_id: '', notes: '' })
+    setForm({ material_id: materialId || '', quantity: '', type: 'entrada', order_id: '', notes: '' })
     setEntryModal(true)
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Inventario"
-        subtitle={`${inventory.length} materiales en stock`}
+        title="Inventario de telas"
+        subtitle={`${inventory.length} telas en stock`}
         action={
           <Button onClick={() => openEntry()}>
             <PackagePlus className="h-4 w-4" />
-            Registrar entrada
+            Registrar movimiento
           </Button>
         }
       />
 
       {/* Stock levels table */}
-      <Card title="Stock actual">
+      <Card title="Stock de telas">
         {isLoading ? (
           <div className="py-12 text-center text-gray-400">Cargando...</div>
         ) : (
@@ -152,7 +155,7 @@ export function InventoryPage() {
       </Card>
 
       {/* Movement history */}
-      <Card title="Historial de entradas">
+      <Card title="Historial de movimientos">
         {entriesLoading ? (
           <div className="py-8 text-center text-gray-400">Cargando...</div>
         ) : entries.length === 0 ? (
@@ -182,11 +185,16 @@ export function InventoryPage() {
               {
                 key: 'quantity',
                 header: 'Cantidad',
-                render: (r: any) => (
-                  <span className="font-semibold text-green-700">
-                    +{r.quantity} {r.unit || r.materials?.unit}
-                  </span>
-                ),
+                render: (r: any) => {
+                  const isSalida = r.type === 'salida'
+                  const isAjuste = r.type === 'ajuste'
+                  return (
+                    <span className={`font-semibold flex items-center gap-1 ${isSalida ? 'text-red-600' : isAjuste ? 'text-amber-600' : 'text-green-700'}`}>
+                      {isSalida ? <TrendingDown className="h-3.5 w-3.5" /> : isAjuste ? <RefreshCw className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+                      {isSalida ? '-' : '+'}{Math.abs(r.quantity)} {r.unit || r.materials?.unit}
+                    </span>
+                  )
+                },
               },
               {
                 key: 'type',
@@ -221,8 +229,8 @@ export function InventoryPage() {
         )}
       </Card>
 
-      {/* Register entry modal */}
-      <Modal open={entryModal} onClose={() => setEntryModal(false)} title="Registrar entrada de material">
+      {/* Register movement modal */}
+      <Modal open={entryModal} onClose={() => setEntryModal(false)} title="Registrar movimiento de inventario">
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -230,29 +238,42 @@ export function InventoryPage() {
           }}
           className="space-y-4"
         >
+          <Select
+            label="Tipo de movimiento *"
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value as EntryForm['type'] })}
+            options={[
+              { value: 'entrada', label: 'Entrada — ingreso de tela al almacén' },
+              { value: 'salida', label: 'Salida — uso o baja de tela' },
+              { value: 'ajuste', label: 'Ajuste — corrección de stock' },
+            ]}
+          />
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Material *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tela *</label>
             <select
               required
               value={form.material_id}
               onChange={(e) => setForm({ ...form, material_id: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
             >
-              <option value="">Seleccionar material...</option>
+              <option value="">Seleccionar tela...</option>
               {inventory.map((item: any) => (
                 <option key={item.material_id} value={item.material_id}>
-                  {item.materials?.name} ({item.materials?.category || 'Sin categoria'})
+                  {item.materials?.name}
+                  {item.materials?.fabric_type === 'temporada'
+                    ? ` · ${item.materials.season}${item.materials.season_year}`
+                    : item.materials?.fabric_type === 'linea' ? ' · Línea' : ''}
+                  {' '}({item.quantity_available} {item.materials?.unit} disponibles)
                 </option>
               ))}
             </select>
           </div>
 
           <Input
-            label="Cantidad recibida *"
+            label={form.type === 'salida' ? 'Cantidad a retirar *' : form.type === 'ajuste' ? 'Cantidad (positivo suma, negativo resta) *' : 'Cantidad a ingresar *'}
             type="number"
-            min="0.01"
+            min={form.type === 'ajuste' ? undefined : '0.01'}
             step="any"
             required
             value={form.quantity}
@@ -262,23 +283,20 @@ export function InventoryPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Para pedido (opcional)
+              Pedido relacionado (opcional)
             </label>
             <select
               value={form.order_id}
               onChange={(e) => setForm({ ...form, order_id: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
             >
-              <option value="">Sin pedido especifico</option>
+              <option value="">Sin pedido específico</option>
               {orders.map((order: any) => (
                 <option key={order.id} value={order.id}>
                   {order.clients?.company_name} — #{order.id.slice(0, 8)}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-400">
-              Indica el pedido para el que se solicitó este material, aunque puede usarse en otros.
-            </p>
           </div>
 
           <Input
@@ -293,7 +311,7 @@ export function InventoryPage() {
               Cancelar
             </Button>
             <Button type="submit" disabled={createEntry.isPending}>
-              {createEntry.isPending ? 'Guardando...' : 'Registrar entrada'}
+              {createEntry.isPending ? 'Guardando...' : 'Registrar movimiento'}
             </Button>
           </div>
         </form>

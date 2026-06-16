@@ -659,25 +659,44 @@ export function OrderDetailPage() {
           </div>
 
           {/* Tela */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tela <span className="text-gray-400 font-normal">(del catálogo)</span>
-            </label>
-            <select
-              value={itemForm.fabric_id}
-              onChange={(e) => setItemForm({ ...itemForm, fabric_id: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            >
-              <option value="">— Seleccionar tela —</option>
-              {(fabrics as any[]).map((f: any) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                  {f.code ? ` (${f.code})` : ''}
-                  {f.fabric_type === 'temporada' ? ` · ${f.season}${f.season_year}` : ' · Línea'}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(() => {
+            const pt = itemForm.piece_type
+            const pieceMap: Record<string, string[]> = {
+              'Blusa': ['blusa'], 'Camisa': ['blusa'],
+              'Chaleco': ['chaleco', 'Ch/P'], 'Saco': ['chaleco', 'Ch/P'],
+              'Pantalón': ['pantalon', 'Ch/P'], 'Falda': ['pantalon', 'Ch/P'],
+            }
+            const allowed = pieceMap[pt]
+            const fabricList = allowed
+              ? (fabrics as any[]).filter((f: any) => allowed.includes(f.piece_type))
+              : (fabrics as any[])
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tela <span className="text-gray-400 font-normal">(del catálogo)</span>
+                </label>
+                <select
+                  value={itemForm.fabric_id}
+                  onChange={(e) => setItemForm({ ...itemForm, fabric_id: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+                  <option value="">— Seleccionar tela —</option>
+                  {fabricList.map((f: any) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                      {f.color ? ` · ${f.color}` : ''}
+                      {f.fabric_type === 'temporada' ? ` (${f.season}${f.season_year})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {allowed && fabricList.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No hay telas registradas para este tipo de pieza.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="grid grid-cols-2 gap-4">
             <Input

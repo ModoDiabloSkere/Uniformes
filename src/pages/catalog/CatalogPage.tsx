@@ -93,14 +93,12 @@ export function CatalogPage() {
     e.preventDefault()
     saveTelaMutation.mutate({
       name: telaForm.name,
-      code: telaForm.code || null,
+      color: telaForm.color || null,
       fabric_type: telaForm.fabric_type,
       season: telaForm.fabric_type === 'temporada' ? telaForm.season : null,
       season_year: telaForm.fabric_type === 'temporada' ? Number(telaForm.season_year) : null,
-      color: telaForm.color || null,
-      unit: telaForm.unit || 'metros',
-      min_stock: telaForm.min_stock !== '' ? Number(telaForm.min_stock) : 0,
       category: 'Tela',
+      unit: 'metros',
     })
   }
 
@@ -181,31 +179,14 @@ export function CatalogPage() {
 
   const telaColumns = [
     {
-      key: 'name', header: 'Tela',
-      render: (r: any) => (
-        <div>
-          <span className="font-medium text-gray-900">{r.name}</span>
-          {r.code && <span className="ml-2 text-xs text-gray-400">{r.code}</span>}
-          {r.color && <span className="ml-2 text-xs text-gray-500">· {r.color}</span>}
-        </div>
-      ),
+      key: 'name', header: 'Nombre',
+      render: (r: any) => <span className="font-medium text-gray-900">{r.name}</span>,
     },
     {
-      key: 'unit', header: 'Unidad',
-      render: (r: any) => <span className="text-sm text-gray-600">{r.unit}</span>,
-    },
-    {
-      key: 'stock', header: 'Stock',
-      render: (r: any) => {
-        const qty = r.inventory?.[0]?.quantity_available ?? 0
-        const min = r.min_stock ?? 0
-        const low = qty <= min && min > 0
-        return (
-          <span className={`text-sm font-medium ${low ? 'text-amber-600' : 'text-gray-700'}`}>
-            {qty} {r.unit}
-          </span>
-        )
-      },
+      key: 'color', header: 'Color',
+      render: (r: any) => r.color
+        ? <span className="text-sm text-gray-700">{r.color}</span>
+        : <span className="text-xs text-gray-300">—</span>,
     },
     {
       key: 'actions', header: '',
@@ -389,32 +370,21 @@ export function CatalogPage() {
       {/* ── Modal Tela ── */}
       <Modal open={telaModal} onClose={closeTelaModal} title={editingTela ? 'Editar tela' : 'Nueva tela'}>
         <form onSubmit={submitTela} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Nombre *"
-              value={telaForm.name}
-              onChange={(e) => setTelaForm({ ...telaForm, name: e.target.value })}
-              required
-              placeholder="Ej: Oxford Navy"
-              className="col-span-2"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Código / referencia"
-              value={telaForm.code}
-              onChange={(e) => setTelaForm({ ...telaForm, code: e.target.value })}
-              placeholder="Ej: OX-001"
-            />
-            <Input
-              label="Color"
-              value={telaForm.color}
-              onChange={(e) => setTelaForm({ ...telaForm, color: e.target.value })}
-              placeholder="Ej: Azul marino"
-            />
-          </div>
+          <Input
+            label="Nombre de tela *"
+            value={telaForm.name}
+            onChange={(e) => setTelaForm({ ...telaForm, name: e.target.value })}
+            required
+            placeholder="Ej: Montecristo"
+          />
+          <Input
+            label="Color"
+            value={telaForm.color}
+            onChange={(e) => setTelaForm({ ...telaForm, color: e.target.value })}
+            placeholder="Ej: Blanca, Bone, Coral"
+          />
           <Select
-            label="Tipo de tela *"
+            label="Tipo *"
             value={telaForm.fabric_type}
             onChange={(e) => setTelaForm({ ...telaForm, fabric_type: e.target.value })}
             options={[
@@ -441,22 +411,6 @@ export function CatalogPage() {
               />
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Unidad"
-              value={telaForm.unit}
-              onChange={(e) => setTelaForm({ ...telaForm, unit: e.target.value })}
-              placeholder="metros"
-            />
-            <Input
-              label="Stock mínimo"
-              type="number"
-              value={telaForm.min_stock}
-              onChange={(e) => setTelaForm({ ...telaForm, min_stock: e.target.value })}
-              placeholder="0"
-              min="0"
-            />
-          </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={closeTelaModal}>Cancelar</Button>
             <Button type="submit" disabled={saveTelaMutation.isPending}>

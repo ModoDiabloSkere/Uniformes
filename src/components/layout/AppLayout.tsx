@@ -6,15 +6,19 @@ import { Sidebar } from './Sidebar'
 import { MobileNavSheet } from './MobileNavSheet'
 
 export function AppLayout() {
-  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
   const [navOpen, setNavOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  if (!token) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar — solo desktop */}
-      <Sidebar />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((v) => !v)}
+      />
 
       {/* Top bar — solo movil */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4">
@@ -35,7 +39,11 @@ export function AppLayout() {
       <MobileNavSheet open={navOpen} onClose={() => setNavOpen(false)} />
 
       {/* Contenido principal */}
-      <main className="md:ml-64 p-4 sm:p-6 lg:p-8 pt-18 md:pt-8">
+      <main
+        className={`transition-[margin-left] duration-300 ease-in-out p-4 sm:p-6 lg:p-8 pt-18 md:pt-8 ${
+          sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
+        }`}
+      >
         <Outlet />
       </main>
     </div>

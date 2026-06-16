@@ -22,14 +22,18 @@ export function LoginPage() {
 
     try {
       const data = await api<{
-        token: string
         user: { id: string; email: string; role: string }
+        access_token: string
+        refresh_token: string
       }>('/api/auth/login', {
         method: 'POST',
         body: { email, password },
       })
 
-      setAuth(data.token, data.user as any)
+      setAuth(data.user as any, {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      })
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesion')

@@ -73,6 +73,7 @@ export function OrdersPage() {
             />
           </div>
           <Select
+            placeholder="Todos los estados"
             options={[
               { value: 'cotizacion', label: 'Cotizacion' },
               { value: 'aprobado', label: 'Aprobado' },

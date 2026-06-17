@@ -66,7 +66,7 @@ export function LoginPage() {
         </svg>
 
         <div className="relative z-10">
-          <img src="/images/logo.jpg" alt="Uniformes D'Johanna" className="h-14 w-auto object-contain" />
+          <img src="/images/logo.png" alt="Uniformes D'Johanna" className="h-14 w-auto object-contain" />
         </div>
 
         <div className="relative z-10">

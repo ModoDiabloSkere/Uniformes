@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Truck } from 'lucide-react'
+import { Plus, Pencil, Trash2, Truck } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
@@ -9,11 +9,15 @@ import { Input } from '../../components/ui/Input'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 
+type SupplierForm = { name: string; phone: string; email: string; address: string }
+const emptyForm: SupplierForm = { name: '', phone: '', email: '', address: '' }
+
 export function SuppliersPage() {
-  const { get, post, del } = useApi()
+  const { get, post, put, del } = useApi()
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '' })
+  const [editingSupplier, setEditingSupplier] = useState<any>(null)
+  const [form, setForm] = useState<SupplierForm>(emptyForm)
 
   const { data: suppliers = [], isLoading } = useQuery<any[]>({
     queryKey: ['suppliers'],
@@ -21,11 +25,18 @@ export function SuppliersPage() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof form) => post('/api/suppliers', data),
+    mutationFn: (data: SupplierForm) => post('/api/suppliers', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
-      setModalOpen(false)
-      setForm({ name: '', phone: '', email: '', address: '' })
+      closeModal()
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: SupplierForm) => put(`/api/suppliers/${editingSupplier.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      closeModal()
     },
   })
 
@@ -34,13 +45,47 @@ export function SuppliersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
   })
 
+  function openCreate() {
+    setEditingSupplier(null)
+    setForm(emptyForm)
+    setModalOpen(true)
+  }
+
+  function openEdit(supplier: any) {
+    setEditingSupplier(supplier)
+    setForm({
+      name: supplier.name,
+      phone: supplier.phone || '',
+      email: supplier.email || '',
+      address: supplier.address || '',
+    })
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingSupplier(null)
+    setForm(emptyForm)
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (editingSupplier) {
+      updateMutation.mutate(form)
+    } else {
+      createMutation.mutate(form)
+    }
+  }
+
+  const isPending = createMutation.isPending || updateMutation.isPending
+
   return (
     <div>
       <PageHeader
         title="Proveedores"
         subtitle={`${suppliers.length} proveedores registrados`}
         action={
-          <Button onClick={() => setModalOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" /> Nuevo proveedor
           </Button>
         }
@@ -53,7 +98,9 @@ export function SuppliersPage() {
           <Table
             columns={[
               {
-                key: 'name', header: 'Proveedor', render: (r: any) => (
+                key: 'name',
+                header: 'Proveedor',
+                render: (r: any) => (
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                       <Truck className="h-4 w-4" />
@@ -62,17 +109,27 @@ export function SuppliersPage() {
                   </div>
                 ),
               },
-              { key: 'phone', header: 'Telefono' },
+              { key: 'phone', header: 'Teléfono' },
               { key: 'email', header: 'Email' },
-              { key: 'address', header: 'Direccion' },
+              { key: 'address', header: 'Dirección' },
               {
-                key: 'actions', header: '', render: (r: any) => (
-                  <button
-                    onClick={() => { if (confirm('Eliminar proveedor?')) deleteMutation.mutate(r.id) }}
-                    className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                key: 'actions',
+                header: '',
+                render: (r: any) => (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEdit(r)}
+                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => { if (confirm('¿Eliminar proveedor?')) deleteMutation.mutate(r.id) }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ),
               },
             ]}
@@ -81,17 +138,41 @@ export function SuppliersPage() {
         )}
       </Card>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo proveedor">
-        <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form) }} className="space-y-4">
-          <Input label="Nombre *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      <Modal
+        open={modalOpen}
+        onClose={closeModal}
+        title={editingSupplier ? 'Editar proveedor' : 'Nuevo proveedor'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Nombre *"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Telefono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input
+              label="Teléfono"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
           </div>
-          <Input label="Direccion" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <Input
+            label="Dirección"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" disabled={createMutation.isPending}>Guardar</Button>
+            <Button type="button" variant="secondary" onClick={closeModal}>Cancelar</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? 'Guardando...' : editingSupplier ? 'Guardar cambios' : 'Crear proveedor'}
+            </Button>
           </div>
         </form>
       </Modal>

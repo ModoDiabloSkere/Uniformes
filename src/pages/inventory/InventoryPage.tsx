@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Plus, PackagePlus, TrendingDown, TrendingUp, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Plus, PackagePlus, TrendingDown, TrendingUp, RefreshCw, Search } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
@@ -19,6 +19,8 @@ interface EntryForm {
   notes: string
 }
 
+type EntryTypeFilter = 'all' | 'entrada' | 'salida' | 'ajuste'
+
 export function InventoryPage() {
   const { get, post } = useApi()
   const queryClient = useQueryClient()
@@ -30,6 +32,8 @@ export function InventoryPage() {
     order_id: '',
     notes: '',
   })
+  const [stockSearch, setStockSearch] = useState('')
+  const [entryTypeFilter, setEntryTypeFilter] = useState<EntryTypeFilter>('all')
 
   const { data: inventory = [], isLoading } = useQuery<any[]>({
     queryKey: ['inventory'],
@@ -43,7 +47,7 @@ export function InventoryPage() {
 
   const { data: entries = [], isLoading: entriesLoading } = useQuery<any[]>({
     queryKey: ['inventory-entries'],
-    queryFn: () => get('/api/inventory/entries?limit=30'),
+    queryFn: () => get('/api/inventory/entries?limit=100'),
   })
 
   const createEntry = useMutation({
@@ -68,6 +72,24 @@ export function InventoryPage() {
     setEntryModal(true)
   }
 
+  const filteredInventory = stockSearch.trim()
+    ? inventory.filter((row: any) =>
+        row.materials?.name?.toLowerCase().includes(stockSearch.toLowerCase()) ||
+        row.materials?.category?.toLowerCase().includes(stockSearch.toLowerCase())
+      )
+    : inventory
+
+  const filteredEntries = entryTypeFilter === 'all'
+    ? entries
+    : entries.filter((e: any) => e.type === entryTypeFilter)
+
+  const typeFilterOptions: { key: EntryTypeFilter; label: string }[] = [
+    { key: 'all', label: 'Todos' },
+    { key: 'entrada', label: 'Entradas' },
+    { key: 'salida', label: 'Salidas' },
+    { key: 'ajuste', label: 'Ajustes' },
+  ]
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -83,8 +105,24 @@ export function InventoryPage() {
 
       {/* Stock levels table */}
       <Card title="Stock de telas">
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={stockSearch}
+            onChange={(e) => setStockSearch(e.target.value)}
+            placeholder="Buscar por nombre o categoría..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+          />
+        </div>
+
         {isLoading ? (
           <div className="py-12 text-center text-gray-400">Cargando...</div>
+        ) : filteredInventory.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 text-sm">
+            {stockSearch ? 'Sin resultados para esa búsqueda' : 'Sin telas en inventario'}
+          </div>
         ) : (
           <Table
             columns={[
@@ -97,12 +135,15 @@ export function InventoryPage() {
                       <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                     )}
                     <span className="font-medium">{row.materials?.name}</span>
+                    {row.materials?.color && (
+                      <span className="text-xs text-gray-400">· {row.materials.color}</span>
+                    )}
                   </div>
                 ),
               },
               {
                 key: 'category',
-                header: 'Categoria',
+                header: 'Categoría',
                 render: (row: any) => row.materials?.category || '-',
               },
               {
@@ -116,7 +157,7 @@ export function InventoryPage() {
               },
               {
                 key: 'min_stock',
-                header: 'Stock min.',
+                header: 'Stock mín.',
                 render: (row: any) =>
                   row.materials?.min_stock != null
                     ? `${row.materials.min_stock} ${row.materials?.unit}`
@@ -149,18 +190,35 @@ export function InventoryPage() {
                 ),
               },
             ]}
-            data={inventory}
+            data={filteredInventory}
           />
         )}
       </Card>
 
       {/* Movement history */}
       <Card title="Historial de movimientos">
+        {/* Type filter pills */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {typeFilterOptions.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setEntryTypeFilter(key)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                entryTypeFilter === key
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {entriesLoading ? (
           <div className="py-8 text-center text-gray-400">Cargando...</div>
-        ) : entries.length === 0 ? (
+        ) : filteredEntries.length === 0 ? (
           <div className="py-8 text-center text-gray-400">
-            Sin movimientos registrados
+            Sin movimientos{entryTypeFilter !== 'all' ? ` de tipo "${entryTypeFilter}"` : ''} registrados
           </div>
         ) : (
           <Table
@@ -224,7 +282,7 @@ export function InventoryPage() {
                   ),
               },
             ]}
-            data={entries}
+            data={filteredEntries}
           />
         )}
       </Card>

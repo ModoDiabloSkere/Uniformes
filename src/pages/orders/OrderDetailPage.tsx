@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Trash2, UserPlus, AlertTriangle, CheckCircle, FileDown, Truck, X } from 'lucide-react'
+import { ArrowLeft, Plus, Pencil, Trash2, UserPlus, AlertTriangle, CheckCircle, FileDown, Truck, X } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
@@ -20,6 +20,7 @@ export function OrderDetailPage() {
   const queryClient = useQueryClient()
   const [downloading, setDownloading] = useState(false)
   const [itemModal, setItemModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<any>(null)
   const [employeeModal, setEmployeeModal] = useState(false)
   const [itemForm, setItemForm] = useState({
     piece_type: '',
@@ -99,13 +100,48 @@ export function OrderDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orders', id] }),
   })
 
+  const emptyItemForm = { piece_type: '', fabric_id: '', model_id: '', quantity: '', price_per_unit: '', item_notes: '' }
+
+  function openAddItem() {
+    setEditingItem(null)
+    setItemForm(emptyItemForm)
+    setItemModal(true)
+  }
+
+  function openEditItem(item: any) {
+    setEditingItem(item)
+    setItemForm({
+      piece_type: item.piece_type || item.uniform_type || '',
+      fabric_id: item.fabric_id || '',
+      model_id: item.model_id || '',
+      quantity: String(item.quantity),
+      price_per_unit: String(item.price_per_unit),
+      item_notes: item.item_notes || '',
+    })
+    setItemModal(true)
+  }
+
+  function closeItemModal() {
+    setItemModal(false)
+    setEditingItem(null)
+    setItemForm(emptyItemForm)
+  }
+
   const addItemMutation = useMutation({
     mutationFn: (data: any) => post(`/api/orders/${id}/items`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders', id] })
       queryClient.invalidateQueries({ queryKey: ['orders', id, 'check'] })
-      setItemModal(false)
-      setItemForm({ piece_type: '', fabric_id: '', model_id: '', quantity: '', price_per_unit: '', item_notes: '' })
+      closeItemModal()
+    },
+  })
+
+  const updateItemMutation = useMutation({
+    mutationFn: (data: any) => put(`/api/order-items/${editingItem.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', id] })
+      queryClient.invalidateQueries({ queryKey: ['orders', id, 'check'] })
+      closeItemModal()
     },
   })
 
@@ -212,7 +248,7 @@ export function OrderDetailPage() {
           <Card
             title="Items del pedido"
             action={
-              <Button size="sm" onClick={() => setItemModal(true)}>
+              <Button size="sm" onClick={openAddItem}>
                 <Plus className="h-3.5 w-3.5" /> Agregar item
               </Button>
             }
@@ -256,14 +292,24 @@ export function OrderDetailPage() {
                   ),
                 },
                 {
-                  key: 'actions', header: '', render: (r: any) => (
-                    <button
-                      onClick={() => { if (confirm('¿Eliminar este ítem?')) deleteItemMutation.mutate(r.id) }}
-                      disabled={deleteItemMutation.isPending}
-                      className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  key: 'actions',
+                  header: '',
+                  render: (r: any) => (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEditItem(r)}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => { if (confirm('¿Eliminar este ítem?')) deleteItemMutation.mutate(r.id) }}
+                        disabled={deleteItemMutation.isPending}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   ),
                 },
               ]}
@@ -568,18 +614,27 @@ export function OrderDetailPage() {
       </div>
 
       {/* Add item modal */}
-      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Agregar pieza al pedido">
+      <Modal
+        open={itemModal}
+        onClose={closeItemModal}
+        title={editingItem ? 'Editar pieza del pedido' : 'Agregar pieza al pedido'}
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            addItemMutation.mutate({
+            const payload = {
               piece_type: itemForm.piece_type,
               fabric_id: itemForm.fabric_id || null,
               model_id: itemForm.model_id || null,
               quantity: Number(itemForm.quantity),
               price_per_unit: Number(itemForm.price_per_unit),
               item_notes: itemForm.item_notes || null,
-            })
+            }
+            if (editingItem) {
+              updateItemMutation.mutate(payload)
+            } else {
+              addItemMutation.mutate(payload)
+            }
           }}
           className="space-y-4"
         >
@@ -752,9 +807,11 @@ export function OrderDetailPage() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setItemModal(false)}>Cancelar</Button>
-            <Button type="submit" disabled={addItemMutation.isPending}>
-              {addItemMutation.isPending ? 'Agregando...' : 'Agregar pieza'}
+            <Button type="button" variant="secondary" onClick={closeItemModal}>Cancelar</Button>
+            <Button type="submit" disabled={addItemMutation.isPending || updateItemMutation.isPending}>
+              {addItemMutation.isPending || updateItemMutation.isPending
+                ? 'Guardando...'
+                : editingItem ? 'Guardar cambios' : 'Agregar pieza'}
             </Button>
           </div>
         </form>

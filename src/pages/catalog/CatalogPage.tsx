@@ -90,20 +90,16 @@ export function CatalogPage() {
       colors: { id: string | null; value: string }[]
       deletedIds: string[]
     }) => {
-      for (const id of deletedIds) {
-        await del(`/api/materials/${id}`)
-      }
-      for (const c of colors.filter((c) => c.id)) {
-        await put(`/api/materials/${c.id}`, { ...base, color: c.value || null })
-      }
-      const newColors = colors.filter((c) => !c.id && c.value.trim())
-      if (newColors.length > 0) {
-        for (const c of newColors) {
-          await post('/api/materials', { ...base, color: c.value || null })
-        }
-      } else if (colors.every((c) => !c.id)) {
-        await post('/api/materials', { ...base, color: null })
-      }
+      await Promise.all(deletedIds.map((id) => del(`/api/materials/${id}`)))
+      const toUpdate = colors.filter((c) => c.id)
+      const toCreate = colors.filter((c) => !c.id && c.value.trim())
+      await Promise.all([
+        ...toUpdate.map((c) => put(`/api/materials/${c.id}`, { ...base, color: c.value || null })),
+        ...toCreate.map((c) => post('/api/materials', { ...base, color: c.value || null })),
+        ...(toCreate.length === 0 && toUpdate.length === 0
+          ? [post('/api/materials', { ...base, color: null })]
+          : []),
+      ])
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materials'] })
@@ -530,16 +526,7 @@ export function CatalogPage() {
 
           {/* Colores dinámicos */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">Colores disponibles</label>
-              <button
-                type="button"
-                onClick={addColor}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-              >
-                <Plus className="h-3.5 w-3.5" /> Agregar color
-              </button>
-            </div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Colores disponibles</label>
             <div className="space-y-2">
               {telaForm.colors.map((c, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -561,6 +548,13 @@ export function CatalogPage() {
                 </div>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={addColor}
+              className="mt-2 text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" /> Agregar color
+            </button>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

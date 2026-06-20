@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Layers, Scissors, X, Search } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -242,6 +242,8 @@ export function CatalogPage() {
   }
 
   // ── Modelos ────────────────────────────────────────────────────────────
+  const [modeloSearch, setModeloSearch] = useState('')
+  const [modeloSeasonFilter, setModeloSeasonFilter] = useState('')
   const [modeloModal, setModeloModal] = useState(false)
   const [editingModelo, setEditingModelo] = useState<any>(null)
   const [modeloForm, setModeloForm] = useState({
@@ -325,6 +327,32 @@ export function CatalogPage() {
   const blusaOptions = toOptions(fabrics.filter((m: any) => m.piece_type === 'blusa'))
   const chalecoOptions = toOptions(fabrics.filter((m: any) => m.piece_type === 'chaleco' || m.piece_type === 'Ch/P'))
   const pantaloneOptions = toOptions(fabrics.filter((m: any) => m.piece_type === 'pantalon' || m.piece_type === 'Ch/P'))
+
+  const modeloSeasonOptions = useMemo(() => {
+    const seasons = new Set(modelos.map((m: any) => `${m.season}-${m.season_year}`))
+    return [
+      { value: '', label: 'Todas las temporadas' },
+      ...[...seasons]
+        .sort((a, b) => b.localeCompare(a))
+        .map((key) => {
+          const [s, y] = key.split('-')
+          return { value: key, label: seasonLabel(s, Number(y)) }
+        }),
+    ]
+  }, [modelos])
+
+  const modelosFiltered = useMemo(() => {
+    let result = modelos
+    if (modeloSearch) {
+      const q = modeloSearch.toLowerCase()
+      result = result.filter((m: any) => String(m.number).toLowerCase().includes(q))
+    }
+    if (modeloSeasonFilter) {
+      const [s, y] = modeloSeasonFilter.split('-')
+      result = result.filter((m: any) => m.season === s && String(m.season_year) === y)
+    }
+    return result
+  }, [modelos, modeloSearch, modeloSeasonFilter])
 
   // ── FabricGroupRow ─────────────────────────────────────────────────────
   function FabricGroupRow({ group }: { group: FabricGroup }) {
@@ -551,6 +579,50 @@ export function CatalogPage() {
             exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
             className="space-y-3"
           >
+            {/* Barra de búsqueda y filtro */}
+            {modelos.length > 0 && (
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--color-text-muted)' }} />
+                  <input
+                    type="text"
+                    value={modeloSearch}
+                    onChange={(e) => setModeloSearch(e.target.value)}
+                    placeholder="Buscar por número..."
+                    className="w-full pl-9 pr-3 py-2 text-[13px] rounded-lg border outline-none"
+                    style={{
+                      borderColor: 'var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text-primary)',
+                    }}
+                  />
+                  {modeloSearch && (
+                    <button
+                      onClick={() => setModeloSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                      style={{ color: 'var(--color-text-muted)' }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={modeloSeasonFilter}
+                  onChange={(e) => setModeloSeasonFilter(e.target.value)}
+                  className="px-3 py-2 text-[13px] rounded-lg border outline-none"
+                  style={{
+                    borderColor: 'var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text-primary)',
+                  }}
+                >
+                  {modeloSeasonOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {modelos.length === 0 ? (
               <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, boxShadow: 'var(--shadow-card)' }}>
                 <EmptyState
@@ -564,10 +636,14 @@ export function CatalogPage() {
                   }
                 />
               </div>
+            ) : modelosFiltered.length === 0 ? (
+              <p className="text-[13px] py-6 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                Sin resultados para esa búsqueda
+              </p>
             ) : (
               <Card>
                 <motion.div variants={fadeInList} initial="hidden" animate="visible">
-                  {modelos.map((m: any) => (
+                  {modelosFiltered.map((m: any) => (
                     <motion.div
                       key={m.id}
                       variants={fadeInItem}
@@ -605,8 +681,8 @@ export function CatalogPage() {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-3">
                             {[
-                              { label: 'Blusa',    fabric: m.blusa_material },
                               { label: 'Chaleco',  fabric: m.chaleco_material },
+                              { label: 'Blusa',    fabric: m.blusa_material },
                               { label: 'Pantalón', fabric: m.pantalon_material },
                             ].map(({ label, fabric }) => (
                               <div key={label} className="text-[12px]">
@@ -804,18 +880,18 @@ export function CatalogPage() {
               Combinación de telas
             </p>
             <SearchSelect
-              label="Tela para Blusa / Camisa"
-              value={modeloForm.blusa_material_id}
-              onChange={(v) => setModeloForm({ ...modeloForm, blusa_material_id: v })}
-              options={blusaOptions}
-              placeholder="Buscar tela de blusa..."
-            />
-            <SearchSelect
               label="Tela para Chaleco / Saco"
               value={modeloForm.chaleco_material_id}
               onChange={(v) => setModeloForm({ ...modeloForm, chaleco_material_id: v })}
               options={chalecoOptions}
               placeholder="Buscar tela de chaleco..."
+            />
+            <SearchSelect
+              label="Tela para Blusa / Camisa"
+              value={modeloForm.blusa_material_id}
+              onChange={(v) => setModeloForm({ ...modeloForm, blusa_material_id: v })}
+              options={blusaOptions}
+              placeholder="Buscar tela de blusa..."
             />
             <SearchSelect
               label="Tela para Pantalón / Falda"

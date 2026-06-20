@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query'
 import { useAuthStore } from './stores/authStore'
 import { AppLayout } from './components/layout/AppLayout'
+import { RoleRoute } from './components/layout/RoleRoute'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { ClientsPage } from './pages/clients/ClientsPage'
@@ -43,17 +44,33 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={<AppLayout />}>
+            {/* Accesible para todos los roles autenticados */}
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/clientes" element={<ClientsPage />} />
-            <Route path="/clientes/:id" element={<ClientDetailPage />} />
-            <Route path="/pedidos" element={<OrdersPage />} />
-            <Route path="/pedidos/:id" element={<OrderDetailPage />} />
-            <Route path="/produccion" element={<ProductionPage />} />
-            <Route path="/empleados/:id" element={<EmployeeDetailPage />} />
-            <Route path="/inventario" element={<InventoryPage />} />
-            <Route path="/proveedores" element={<SuppliersPage />} />
-            <Route path="/cotizaciones" element={<QuotesPage />} />
-            <Route path="/catalogo" element={<CatalogPage />} />
+
+            {/* Ventas / Admin */}
+            <Route element={<RoleRoute roles={['admin', 'ventas']} />}>
+              <Route path="/clientes" element={<ClientsPage />} />
+              <Route path="/clientes/:id" element={<ClientDetailPage />} />
+              <Route path="/catalogo" element={<CatalogPage />} />
+              <Route path="/cotizaciones" element={<QuotesPage />} />
+            </Route>
+
+            {/* Pedidos y producción (ventas + confección) */}
+            <Route element={<RoleRoute roles={['admin', 'ventas', 'confeccion']} />}>
+              <Route path="/pedidos" element={<OrdersPage />} />
+              <Route path="/pedidos/:id" element={<OrderDetailPage />} />
+              <Route path="/empleados/:id" element={<EmployeeDetailPage />} />
+            </Route>
+
+            <Route element={<RoleRoute roles={['admin', 'confeccion']} />}>
+              <Route path="/produccion" element={<ProductionPage />} />
+            </Route>
+
+            {/* Almacén / Admin */}
+            <Route element={<RoleRoute roles={['admin', 'almacen']} />}>
+              <Route path="/inventario" element={<InventoryPage />} />
+              <Route path="/proveedores" element={<SuppliersPage />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

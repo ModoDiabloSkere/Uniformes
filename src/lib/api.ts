@@ -15,15 +15,12 @@ export async function api<T = unknown>(
     'Content-Type': 'application/json',
   }
 
-  // Enviar tokens desde localStorage como respaldo cuando
-  // las cookies cross-origin son bloqueadas por el navegador
+  // Respaldo cross-origin: solo el access_token (1h). El refresh_token vive
+  // únicamente en la cookie HttpOnly (no accesible por JS) y viaja con
+  // credentials:'include', por lo que el refresh sigue funcionando por cookie.
   const token = localStorage.getItem('access_token')
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
-  }
-  const refreshToken = localStorage.getItem('refresh_token')
-  if (refreshToken) {
-    headers['X-Refresh-Token'] = refreshToken
   }
 
   const res = await fetch(`${API_URL}${path}`, {
@@ -33,11 +30,10 @@ export async function api<T = unknown>(
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  // Si el middleware renovó los tokens, actualizarlos en localStorage
+  // Si el middleware renovó el access_token, actualizarlo en localStorage.
+  // El nuevo refresh_token se ignora aquí: ya viene en la cookie HttpOnly.
   const newAccessToken = res.headers.get('X-New-Access-Token')
-  const newRefreshToken = res.headers.get('X-New-Refresh-Token')
   if (newAccessToken) localStorage.setItem('access_token', newAccessToken)
-  if (newRefreshToken) localStorage.setItem('refresh_token', newRefreshToken)
 
   const data = await res.json()
 

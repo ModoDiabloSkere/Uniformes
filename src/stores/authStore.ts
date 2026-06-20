@@ -28,8 +28,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAuth: (user, tokens) => {
     localStorage.setItem('user', JSON.stringify(user))
     if (tokens) {
+      // Solo el access_token (1h) se guarda como respaldo cross-origin.
+      // El refresh_token (7d) vive únicamente en la cookie HttpOnly y nunca
+      // se expone a JavaScript, para que un XSS no pueda robarlo.
       localStorage.setItem('access_token', tokens.access_token)
-      localStorage.setItem('refresh_token', tokens.refresh_token)
     }
     set({ user })
   },

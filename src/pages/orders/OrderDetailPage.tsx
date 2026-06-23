@@ -199,20 +199,20 @@ export function OrderDetailPage() {
     onError: (err: any) => toast.error(err?.message || 'Error al actualizar la OC'),
   })
 
-  const handleDownloadQuotation = async () => {
+  const handleDownloadPurchaseOrder = async () => {
     setDownloading(true)
     try {
-      const blob = await download(`/api/orders/${id}/quotation`)
+      const blob = await download(`/api/orders/${id}/purchase-order`)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Cotizacion-${id?.slice(0, 8).toUpperCase()}.docx`
+      a.download = `OrdenCompra-${id?.slice(0, 8).toUpperCase()}.xlsx`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      toast.error(err?.message || 'Error al generar la cotización')
+      toast.error(err?.message || 'Error al generar la orden de compra')
     } finally {
       setDownloading(false)
     }
@@ -589,6 +589,8 @@ export function OrderDetailPage() {
               const iva = applyIva ? subtotal * 0.16 : 0
               const total = subtotal + iva
               const anticipo = total * 0.5
+              const retIsr = (total / 1.16) * 0.0125
+              const deposito = anticipo - retIsr
               const fmt = (n: number) =>
                 n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
               return (
@@ -613,12 +615,20 @@ export function OrderDetailPage() {
                     <span>Total</span>
                     <span className="text-lg">${fmt(total)}</span>
                   </div>
-                  <div className="bg-primary-50 rounded-lg px-3 py-2.5 mt-1">
+                  <div className="bg-primary-50 rounded-lg px-3 py-2.5 mt-1 space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-primary-700 font-medium">Anticipo (50%)</span>
                       <span className="text-primary-800 font-bold text-base">${fmt(anticipo)}</span>
                     </div>
-                    <p className="text-xs text-primary-500 mt-0.5">Calculado automáticamente · no editable</p>
+                    <div className="flex justify-between items-center text-xs text-primary-600">
+                      <span>Ret. ISR (1.25%)</span>
+                      <span>−${fmt(retIsr)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-primary-100 pt-1">
+                      <span className="text-primary-700 font-semibold text-xs">Depósito anticipo</span>
+                      <span className="text-primary-900 font-bold">${fmt(deposito)}</span>
+                    </div>
+                    <p className="text-[10px] text-primary-400">ISR ret. calculado sobre subtotal · 1.25%</p>
                   </div>
                 </div>
               )
@@ -630,11 +640,15 @@ export function OrderDetailPage() {
             <div className="space-y-3 text-sm">
               <div>
                 <p className="text-gray-500 mb-1">Temporada</p>
-                <Input
-                  placeholder="Ej: Otoño Invierno 2026"
-                  defaultValue={order.season || ''}
-                  onBlur={(e) => updateMutation.mutate({ season: e.target.value })}
-                />
+                <select
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
+                  value={order.season || ''}
+                  onChange={(e) => updateMutation.mutate({ season: e.target.value })}
+                >
+                  <option value="">— Seleccionar —</option>
+                  <option value="OI">Otoño / Invierno</option>
+                  <option value="PV">Primavera / Verano</option>
+                </select>
               </div>
               <div>
                 <p className="text-gray-500 mb-1">Días de entrega (hábiles)</p>
@@ -678,15 +692,15 @@ export function OrderDetailPage() {
           </Card>
 
           <div>
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={handleDownloadQuotation}
+            <button
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60"
+              style={{ backgroundColor: '#C00000' }}
+              onClick={handleDownloadPurchaseOrder}
               disabled={downloading}
             >
               <FileDown className="h-4 w-4" />
-              {downloading ? 'Generando...' : 'Descargar cotización'}
-            </Button>
+              {downloading ? 'Generando...' : 'Descargar orden de compra'}
+            </button>
           </div>
 
         </div>

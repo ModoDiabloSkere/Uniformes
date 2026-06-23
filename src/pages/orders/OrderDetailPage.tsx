@@ -32,7 +32,13 @@ export function OrderDetailPage() {
     price_per_unit: '',
     item_notes: '',
   })
-  const [empForm, setEmpForm] = useState({ name: '', department: '', position: '' })
+  const emptyEmpForm = {
+    name: '', department: '', position: '',
+    chest: '', waist: '', hips: '', height: '',
+    sleeve: '', shoulder: '', neck: '', inseam: '',
+    emp_notes: '',
+  }
+  const [empForm, setEmpForm] = useState(emptyEmpForm)
   const [pendingStatus, setPendingStatus] = useState<string | null>(null)
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false)
   const [statusPwError, setStatusPwError] = useState('')
@@ -168,15 +174,36 @@ export function OrderDetailPage() {
   })
 
   const addEmployeeMutation = useMutation({
-    mutationFn: (data: any) => post(`/api/orders/${id}/employees`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders', id] })
-      setEmployeeModal(false)
-      setEmpForm({ name: '', department: '', position: '' })
-      toast.success('Empleado agregado')
-    },
+    mutationFn: (data: any) => post<any>(`/api/orders/${id}/employees`, data),
     onError: (err: any) => toast.error(err?.message || 'Error al agregar empleado'),
   })
+
+  const MEASUREMENT_KEYS = ['chest', 'waist', 'hips', 'height', 'sleeve', 'shoulder', 'neck', 'inseam'] as const
+
+  async function handleAddEmployee(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      const employee = await addEmployeeMutation.mutateAsync({
+        name: empForm.name,
+        department: empForm.department || undefined,
+        position: empForm.position || undefined,
+      })
+      const measurementData: Record<string, number | string> = {}
+      for (const key of MEASUREMENT_KEYS) {
+        if (empForm[key]) measurementData[key] = Number(empForm[key])
+      }
+      if (empForm.emp_notes) measurementData.notes = empForm.emp_notes
+      if (Object.keys(measurementData).length > 0) {
+        await put(`/api/employees/${employee.id}/measurements`, measurementData)
+      }
+      queryClient.invalidateQueries({ queryKey: ['orders', id] })
+      setEmployeeModal(false)
+      setEmpForm(emptyEmpForm)
+      toast.success('Empleado agregado')
+    } catch {
+      // error ya mostrado por onError
+    }
+  }
 
   const createPoMutation = useMutation({
     mutationFn: (data: any) => post('/api/purchase-orders', data),
@@ -897,44 +924,77 @@ export function OrderDetailPage() {
       </Modal>
 
       {/* Add employee modal */}
-      <Modal open={employeeModal} onClose={() => setEmployeeModal(false)} title="Agregar empleado de la empresa">
-        <form onSubmit={(e) => { e.preventDefault(); addEmployeeMutation.mutate(empForm) }} className="space-y-4">
+      <Modal open={employeeModal} onClose={() => { setEmployeeModal(false); setEmpForm(emptyEmpForm) }} title="Agregar empleado" size="md">
+        <form onSubmit={handleAddEmployee} className="space-y-5">
+          {/* Datos básicos */}
           {(() => {
             const existingDepts = [...new Set((order.employees || []).map((e: any) => e.department).filter(Boolean))] as string[]
             const existingPositions = [...new Set((order.employees || []).map((e: any) => e.position).filter(Boolean))] as string[]
             return (
-              <>
+              <div className="space-y-4">
                 <Input label="Nombre completo *" value={empForm.name} onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })} required />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Input
-                      label="Departamento"
-                      value={empForm.department}
-                      onChange={(e) => setEmpForm({ ...empForm, department: e.target.value })}
-                      list="dept-suggestions"
-                    />
-                    <datalist id="dept-suggestions">
-                      {existingDepts.map((d) => <option key={d} value={d} />)}
-                    </datalist>
+                    <Input label="Departamento" value={empForm.department} onChange={(e) => setEmpForm({ ...empForm, department: e.target.value })} list="dept-suggestions" />
+                    <datalist id="dept-suggestions">{existingDepts.map((d) => <option key={d} value={d} />)}</datalist>
                   </div>
                   <div>
-                    <Input
-                      label="Cargo"
-                      value={empForm.position}
-                      onChange={(e) => setEmpForm({ ...empForm, position: e.target.value })}
-                      list="position-suggestions"
-                    />
-                    <datalist id="position-suggestions">
-                      {existingPositions.map((p) => <option key={p} value={p} />)}
-                    </datalist>
+                    <Input label="Cargo" value={empForm.position} onChange={(e) => setEmpForm({ ...empForm, position: e.target.value })} list="position-suggestions" />
+                    <datalist id="position-suggestions">{existingPositions.map((p) => <option key={p} value={p} />)}</datalist>
                   </div>
                 </div>
-              </>
+              </div>
             )
           })()}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setEmployeeModal(false)}>Cancelar</Button>
-            <Button type="submit" disabled={addEmployeeMutation.isPending}>Agregar</Button>
+
+          {/* Medidas */}
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
+              <span className="text-[12px] font-medium uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+                Medidas <span className="font-normal normal-case">(opcional)</span>
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {([
+                { key: 'chest',    label: 'Pecho' },
+                { key: 'waist',    label: 'Cintura' },
+                { key: 'hips',     label: 'Cadera' },
+                { key: 'height',   label: 'Estatura' },
+                { key: 'sleeve',   label: 'Manga' },
+                { key: 'shoulder', label: 'Hombro' },
+                { key: 'neck',     label: 'Cuello' },
+                { key: 'inseam',   label: 'Entrepierna' },
+              ] as const).map(({ key, label }) => (
+                <Input
+                  key={key}
+                  label={`${label} (cm)`}
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={empForm[key]}
+                  onChange={(e) => setEmpForm({ ...empForm, [key]: e.target.value })}
+                />
+              ))}
+            </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Notas de medidas</label>
+              <textarea
+                value={empForm.emp_notes}
+                onChange={(e) => setEmpForm({ ...empForm, emp_notes: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 border rounded-lg text-sm outline-none resize-none"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button type="button" variant="secondary" onClick={() => { setEmployeeModal(false); setEmpForm(emptyEmpForm) }}>Cancelar</Button>
+            <Button type="submit" disabled={addEmployeeMutation.isPending}>
+              {addEmployeeMutation.isPending ? 'Guardando...' : 'Agregar empleado'}
+            </Button>
           </div>
         </form>
       </Modal>

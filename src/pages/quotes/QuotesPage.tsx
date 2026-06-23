@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Trash2, Download, ChevronDown, ChevronUp,
-  Users, Mail, Phone, Building2, Calendar, MessageSquare, FileText,
+  Users, Mail, Phone, Building2, Calendar, MessageSquare,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApi } from '../../hooks/useApi'
@@ -218,7 +218,7 @@ function ContactRow({ contact }: { contact: LandingContact }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function QuotesPage() {
-  const { get, download } = useApi()
+  const { get } = useApi()
   const toast = useToast()
   const [tab, setTab] = useState<Tab>('nueva')
 

@@ -9,6 +9,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { SearchSelect } from '../../components/ui/SearchSelect'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Modal } from '../../components/ui/Modal'
 import { Table } from '../../components/ui/Table'
@@ -62,6 +63,12 @@ export function OrderDetailPage() {
     queryKey: ['orders', id, 'purchase-orders'],
     queryFn: () => get<any[]>(`/api/orders/${id}/purchase-orders`),
     enabled: !!id,
+  })
+
+  const { data: clientQuotations = [] } = useQuery<any[]>({
+    queryKey: ['quotations', order?.client_id],
+    queryFn: () => get<any[]>(`/api/quotations?client_id=${order!.client_id}`),
+    enabled: !!order?.client_id,
   })
 
   const { data: suppliers = [] } = useQuery<any[]>({
@@ -730,6 +737,49 @@ export function OrderDetailPage() {
             </button>
           </div>
 
+          {/* Cotizaciones del cliente */}
+          {clientQuotations.length > 0 && (
+            <Card title="Cotizaciones del cliente">
+              <div className="space-y-2">
+                {clientQuotations.map((q: any) => {
+                  const qDate = new Date(q.created_at).toLocaleDateString('es-MX', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                  })
+                  const qTotal = Number(q.total).toLocaleString('es-MX', {
+                    minimumFractionDigits: 2, maximumFractionDigits: 2,
+                  })
+                  return (
+                    <div
+                      key={q.id}
+                      className="rounded-lg px-3 py-2.5 text-sm"
+                      style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-medium text-gray-800 leading-tight">{q.temporada_label}</span>
+                        <span className="text-gray-500 text-xs whitespace-nowrap">{qDate}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs text-gray-500">
+                          {Array.isArray(q.items) ? q.items.length : 0} pieza{Array.isArray(q.items) && q.items.length !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-700">${qTotal}</span>
+                      </div>
+                      {Array.isArray(q.items) && q.items.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {(q.items as any[]).map((item: any, idx: number) => (
+                            <li key={idx} className="text-[11px] text-gray-500 truncate">
+                              {item.cantidad}× {item.descripcion}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
+
         </div>
       </div>
 
@@ -856,25 +906,23 @@ export function OrderDetailPage() {
             const fabricList = allowed
               ? (fabrics as any[]).filter((f: any) => allowed.includes(f.piece_type))
               : (fabrics as any[])
+            const fabricOptions = fabricList.map((f: any) => ({
+              value: f.id,
+              label: [
+                f.name,
+                f.color || null,
+                f.fabric_type === 'temporada' ? `(${f.season}${f.season_year})` : null,
+              ].filter(Boolean).join(' · '),
+            }))
             return (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tela <span className="text-gray-400 font-normal">(del catálogo)</span>
-                </label>
-                <select
+                <SearchSelect
+                  label="Tela (del catálogo)"
                   value={itemForm.fabric_id}
-                  onChange={(e) => setItemForm({ ...itemForm, fabric_id: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:shadow-[0_0_0_3px_rgba(79,82,214,0.12)]"
-                >
-                  <option value="">— Seleccionar tela —</option>
-                  {fabricList.map((f: any) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                      {f.color ? ` · ${f.color}` : ''}
-                      {f.fabric_type === 'temporada' ? ` (${f.season}${f.season_year})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setItemForm({ ...itemForm, fabric_id: val })}
+                  options={fabricOptions}
+                  placeholder="Buscar tela..."
+                />
                 {allowed && fabricList.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1">
                     No hay telas registradas para este tipo de pieza.

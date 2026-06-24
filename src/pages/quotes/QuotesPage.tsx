@@ -10,8 +10,8 @@ import { useToast } from '../../contexts/ToastContext'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { SearchSelect } from '../../components/ui/SearchSelect'
 import { fadeInItem, fadeInList } from '../../lib/motion'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ export function QuotesPage() {
   const [tab, setTab] = useState<Tab>('nueva')
 
   // ── Nueva cotización ─────────────────────────────────────────────────────
-  const [clienteNombre, setClienteNombre] = useState('')
+  const [clienteId, setClienteId] = useState('')
   const [season, setSeason] = useState('OI')
   const [seasonYear, setSeasonYear] = useState(currentYear)
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
@@ -233,6 +233,20 @@ export function QuotesPage() {
   const [downloading, setDownloading] = useState(false)
 
   const temporadaLabel = `${SEASON_LABEL[season]} ${seasonYear}`
+
+  const { data: clients = [] } = useQuery<any[]>({
+    queryKey: ['clients-list'],
+    queryFn: () => get<any[]>('/api/clients?limit=200'),
+    enabled: tab === 'nueva',
+  })
+
+  const clientOptions = useMemo(
+    () => clients.map((c: any) => ({ value: c.id, label: c.company_name })),
+    [clients]
+  )
+
+  const selectedClient = clients.find((c: any) => c.id === clienteId)
+  const clienteNombre = selectedClient?.company_name || ''
 
   const total = useMemo(
     () => items.reduce((acc, i) => acc + i.cantidad * i.precio_unitario, 0),
@@ -252,8 +266,8 @@ export function QuotesPage() {
   }
 
   async function handleDownload() {
-    if (!clienteNombre.trim()) {
-      toast.error('Ingresa el nombre del cliente')
+    if (!clienteId) {
+      toast.error('Selecciona un cliente')
       return
     }
     if (items.some((i) => !i.descripcion.trim())) {
@@ -262,7 +276,6 @@ export function QuotesPage() {
     }
     setDownloading(true)
     try {
-      // We need POST with body — use fetch directly to get blob
       const token = localStorage.getItem('access_token')
       const apiUrl = import.meta.env.VITE_API_URL
       const res = await fetch(`${apiUrl}/api/quotations/generate`, {
@@ -273,7 +286,8 @@ export function QuotesPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          cliente_nombre: clienteNombre.trim(),
+          client_id: clienteId,
+          cliente_nombre: clienteNombre,
           temporada_label: temporadaLabel,
           fecha,
           items: items.map((i) => ({
@@ -372,11 +386,13 @@ export function QuotesPage() {
             <Card title="Datos del cliente">
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-2">
-                  <Input
-                    label="Nombre / empresa del cliente"
-                    value={clienteNombre}
-                    onChange={(e) => setClienteNombre(e.target.value)}
-                    placeholder="Ej: ING. Juan Pérez / Empresa SA de CV"
+                  <SearchSelect
+                    label="Cliente"
+                    value={clienteId}
+                    onChange={setClienteId}
+                    options={clientOptions}
+                    placeholder="Buscar cliente..."
+                    required
                   />
                 </div>
                 <Select

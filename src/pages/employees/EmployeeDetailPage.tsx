@@ -87,7 +87,10 @@ export function EmployeeDetailPage() {
             }}
             className="space-y-4"
           >
-            <Input label="Nombre" name="name" defaultValue={employee.name} />
+            <div className="grid grid-cols-[1fr_140px] gap-4">
+              <Input label="Nombre" name="name" defaultValue={employee.name} />
+              <Input label="Folio interno" name="folio" defaultValue={employee.folio || ''} placeholder="Ej: EMP-001" />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Departamento" name="department" defaultValue={employee.department || ''} />
               <Input label="Cargo" name="position" defaultValue={employee.position || ''} />

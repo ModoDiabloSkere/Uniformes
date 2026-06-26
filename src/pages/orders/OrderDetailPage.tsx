@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Pencil, Trash2, UserPlus, AlertTriangle, CheckCircle, FileDown, Truck, X, Check } from 'lucide-react'
+import { ArrowLeft, Plus, Pencil, Trash2, UserPlus, AlertTriangle, CheckCircle, FileDown, Truck, X, Check, Search } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { useToast } from '../../contexts/ToastContext'
 import { PageHeader } from '../../components/layout/PageHeader'
@@ -35,12 +35,14 @@ export function OrderDetailPage() {
     item_notes: '',
   })
   const emptyEmpForm = {
-    name: '', department: '', position: '',
+    name: '', folio: '', department: '', position: '',
     chaleco_talla: '', chaleco_notas: '',
     blusa_talla: '',   blusa_notas: '',
     pantalon_talla: '', pantalon_notas: '',
   }
   const [empForm, setEmpForm] = useState(emptyEmpForm)
+  const [empSearch, setEmpSearch] = useState('')
+  const [empPieceFilter, setEmpPieceFilter] = useState<'' | 'chaleco' | 'blusa' | 'pantalon'>('')
   const [pendingStatus, setPendingStatus] = useState<string | null>(null)
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false)
   const [statusPwError, setStatusPwError] = useState('')
@@ -205,6 +207,7 @@ export function OrderDetailPage() {
     try {
       const employee = await addEmployeeMutation.mutateAsync({
         name: empForm.name,
+        folio: empForm.folio || undefined,
         department: empForm.department || undefined,
         position: empForm.position || undefined,
       })
@@ -625,58 +628,156 @@ export function OrderDetailPage() {
           </Card>
 
           {/* Employees */}
-          <Card
-            title="Empleados de la empresa"
-            action={
-              <Button size="sm" onClick={() => setEmployeeModal(true)}>
-                <UserPlus className="h-3.5 w-3.5" /> Agregar
-              </Button>
-            }
-          >
-            <Table
-              columns={[
-                { key: 'name', header: 'Nombre', render: (r: any) => <span className="font-medium">{r.name}</span> },
-                { key: 'department', header: 'Departamento' },
-                { key: 'position', header: 'Cargo' },
-                {
-                  key: 'measurements', header: 'Tallas', render: (r: any) => {
-                    const m = r.measurements?.[0] || r.measurements
-                    const hasTallas = m && (m.chaleco_talla || m.blusa_talla || m.pantalon_talla)
-                    return hasTallas
-                      ? <StatusBadge status="recibida" />
-                      : <span className="text-xs text-gray-400">Pendiente</span>
-                  },
-                },
-                {
-                  key: 'actions', header: '', render: (r: any) => (
-                    <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/empleados/${r.id}`) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (confirm(`¿Eliminar a ${r.name} del pedido?`)) {
-                            deleteEmployeeMutation.mutate(r.id)
-                          }
+          {(() => {
+            const PIECE_LABELS = [
+              { key: 'chaleco',  label: 'Chaleco' },
+              { key: 'blusa',    label: 'Blusa' },
+              { key: 'pantalon', label: 'Pantalón' },
+            ] as const
+
+            const allEmployees: any[] = order.employees || []
+
+            const filteredEmps = allEmployees.filter((emp) => {
+              const m = emp.measurements?.[0] || emp.measurements || {}
+              const matchName = !empSearch || emp.name?.toLowerCase().includes(empSearch.toLowerCase())
+              const matchPiece = !empPieceFilter || !!m[`${empPieceFilter}_talla`]
+              return matchName && matchPiece
+            })
+
+            return (
+              <Card
+                title={`Empleados de la empresa${allEmployees.length > 0 ? ` (${allEmployees.length})` : ''}`}
+                action={
+                  <Button size="sm" onClick={() => setEmployeeModal(true)}>
+                    <UserPlus className="h-3.5 w-3.5" /> Agregar
+                  </Button>
+                }
+              >
+                {allEmployees.length > 0 && (
+                  <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                    {/* Búsqueda por nombre */}
+                    <div className="relative flex-1 max-w-xs">
+                      <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
+                        style={{ color: 'var(--color-text-muted)' }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Buscar por nombre..."
+                        value={empSearch}
+                        onChange={(e) => setEmpSearch(e.target.value)}
+                        className="w-full h-8 pl-8 pr-3 border rounded-lg text-[13px] outline-none transition-all"
+                        style={{
+                          borderColor: 'var(--color-border-strong)',
+                          background: 'var(--color-surface)',
+                          color: 'var(--color-text-primary)',
                         }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
-                  ),
-                },
-              ]}
-              data={order.employees || []}
-              emptyMessage="Sin empleados de la empresa registrados"
-            />
-          </Card>
+                    {/* Filtros por pieza */}
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => setEmpPieceFilter('')}
+                        className="h-8 px-3 rounded-lg text-[12px] font-medium transition-all"
+                        style={
+                          empPieceFilter === ''
+                            ? { background: 'var(--color-text-primary)', color: '#fff' }
+                            : { background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }
+                        }
+                      >
+                        Todos
+                      </button>
+                      {PIECE_LABELS.map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => setEmpPieceFilter(empPieceFilter === key ? '' : key)}
+                          className="h-8 px-3 rounded-lg text-[12px] font-medium transition-all"
+                          style={
+                            empPieceFilter === key
+                              ? { background: 'var(--color-accent)', color: '#fff' }
+                              : { background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }
+                          }
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Table
+                  columns={[
+                    {
+                      key: 'folio',
+                      header: 'Folio',
+                      render: (r: any) => r.folio
+                        ? <span className="font-mono text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>{r.folio}</span>
+                        : <span className="text-xs text-gray-300">—</span>,
+                    },
+                    { key: 'name', header: 'Nombre', render: (r: any) => <span className="font-medium">{r.name}</span> },
+                    { key: 'department', header: 'Depto.' },
+                    {
+                      key: 'measurements',
+                      header: 'Tallas (Ch / Bl / Pt)',
+                      render: (r: any) => {
+                        const m = r.measurements?.[0] || r.measurements || {}
+                        const parts = [
+                          { short: 'Ch', talla: m.chaleco_talla, notas: m.chaleco_notas },
+                          { short: 'Bl', talla: m.blusa_talla,   notas: m.blusa_notas },
+                          { short: 'Pt', talla: m.pantalon_talla, notas: m.pantalon_notas },
+                        ]
+                        const anyTalla = parts.some((p) => p.talla)
+                        if (!anyTalla) return <span className="text-xs text-gray-400">Sin tallas</span>
+                        return (
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                            {parts.map(({ short, talla, notas }) =>
+                              talla ? (
+                                <span key={short} className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }} title={notas || undefined}>
+                                  <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{short}:</span> {talla}
+                                  {notas ? <span className="text-gray-400"> · {notas}</span> : null}
+                                </span>
+                              ) : null
+                            )}
+                          </div>
+                        )
+                      },
+                    },
+                    {
+                      key: 'actions', header: '', render: (r: any) => (
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/empleados/${r.id}`) }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm(`¿Eliminar a ${r.name} del pedido?`)) {
+                                deleteEmployeeMutation.mutate(r.id)
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={filteredEmps}
+                  emptyMessage={
+                    (empSearch || empPieceFilter)
+                      ? 'Ningún empleado coincide con los filtros'
+                      : 'Sin empleados de la empresa registrados'
+                  }
+                />
+              </Card>
+            )
+          })()}
         </div>
 
         {/* Sidebar */}
@@ -1125,7 +1226,10 @@ export function OrderDetailPage() {
             const existingPositions = [...new Set((order.employees || []).map((e: any) => e.position).filter(Boolean))] as string[]
             return (
               <div className="space-y-4">
-                <Input label="Nombre completo *" value={empForm.name} onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })} required />
+                <div className="grid grid-cols-[1fr_140px] gap-4">
+                  <Input label="Nombre completo *" value={empForm.name} onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })} required />
+                  <Input label="Folio interno" value={empForm.folio} onChange={(e) => setEmpForm({ ...empForm, folio: e.target.value })} placeholder="Ej: EMP-001" />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Input label="Departamento" value={empForm.department} onChange={(e) => setEmpForm({ ...empForm, department: e.target.value })} list="dept-suggestions" />
